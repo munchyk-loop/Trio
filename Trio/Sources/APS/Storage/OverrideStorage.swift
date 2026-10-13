@@ -117,6 +117,8 @@ final class BaseOverrideStorage: @preconcurrency OverrideStorage, Injectable {
     }
 
     func storeOverride(override: Override) async throws {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         var presetCount = -1
         if override.isPreset {
             let presets = try await fetchForOverridePresets()

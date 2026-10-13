@@ -25,6 +25,10 @@ class CoreDataStack: ObservableObject {
     /// Sourced from persistent history, so — unlike `NSManagedObjectContextDidSave` — it also
     /// covers `NSBatchInsertRequest`/`NSBatchDeleteRequest` and cross-process changes. App-side
     /// observers subscribe via `entityChangePublisher` and filter with `filteredByEntityName(_:)`.
+    private let backupEntityChangeSubject = PassthroughSubject<Set<NSManagedObjectID>, Never>()
+    var backupEntityChangePublisher: AnyPublisher<Set<NSManagedObjectID>, Never> {
+        backupEntityChangeSubject.eraseToAnyPublisher()
+    }
     private let entityChangeSubject = PassthroughSubject<Set<NSManagedObjectID>, Never>()
     var entityChangePublisher: AnyPublisher<Set<NSManagedObjectID>, Never> {
         entityChangeSubject.eraseToAnyPublisher()
@@ -176,6 +180,8 @@ class CoreDataStack: ObservableObject {
         let viewContext = persistentContainer.viewContext
         let changedObjectIDs = Set(history.flatMap { $0.changes ?? [] }.map(\.changedObjectID))
 
+        let backupChanges = Set(history.filter { $0.author != "TrioCloudRestore" }
+            .flatMap { $0.changes ?? [] }.map(\.changedObjectID))
         viewContext.perform {
             for transaction in history {
                 viewContext.mergeChanges(fromContextDidSave: transaction.objectIDNotification())
@@ -186,6 +192,7 @@ class CoreDataStack: ObservableObject {
             // change feed replaces the hand-rolled changedObjectsOnManagedObjectContextDidSavePublisher.
             if !changedObjectIDs.isEmpty {
                 self.entityChangeSubject.send(changedObjectIDs)
+                if !backupChanges.isEmpty { self.backupEntityChangeSubject.send(backupChanges) }
             }
         }
     }

@@ -11,7 +11,22 @@ extension PumpConfig {
         weak var completionDelegate: CompletionDelegate?
         weak var setupDelegate: PumpManagerOnboardingDelegate?
 
-        func makeUIViewController(context _: UIViewControllerRepresentableContext<PumpSetupView>) -> UIViewController {
+        final class Coordinator {
+            var holdsLease = false
+            func releaseLease() {
+                guard holdsLease else { return }
+                holdsLease = false
+                TrioBackupOperationGate.shared.endOperation()
+            }
+            deinit { releaseLease() }
+        }
+        func makeCoordinator() -> Coordinator { Coordinator() }
+
+        func makeUIViewController(context: UIViewControllerRepresentableContext<PumpSetupView>) -> UIViewController {
+            guard TrioBackupOperationGate.shared.beginOperation() else {
+                return UIHostingController(rootView: PumpRestoreRecoveryView())
+            }
+            context.coordinator.holdsLease = true
             // var setupViewController: PumpManagerSetupViewController & UIViewController & CompletionNotifying
             var setupViewController: SetupUIResult<
                 PumpManagerViewController,
@@ -49,6 +64,10 @@ extension PumpConfig {
                 vc.completionDelegate = completionDelegate
                 return vc
             }
+        }
+
+        static func dismantleUIViewController(_: UIViewController, coordinator: Coordinator) {
+            coordinator.releaseLease()
         }
 
         func updateUIViewController(_: UIViewController, context _: UIViewControllerRepresentableContext<PumpSetupView>) {}

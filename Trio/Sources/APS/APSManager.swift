@@ -301,6 +301,9 @@ final class BaseAPSManager: APSManager, Injectable {
             let userInitiated = self.nextLoopUserInitiated
             self.nextLoopUserInitiated = false
 
+            guard TrioBackupOperationGate.shared.beginOperation() else { return }
+            defer { TrioBackupOperationGate.shared.endOperation() }
+
             // Don't try to run a loop while pump setup / pod pairing is in
             // progress — `verifyStatus` would throw `invalidPumpState("Pump
             // not set")` and surface a modal banner on top of the pod
@@ -491,6 +494,8 @@ final class BaseAPSManager: APSManager, Injectable {
     }
 
     func determineBasal() async throws {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         debug(.apsManager, "Start determine basal")
 
         try await calculateAndStoreTDD()
@@ -582,6 +587,8 @@ final class BaseAPSManager: APSManager, Injectable {
     }
 
     func determineBasalSync() async throws {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         await loopGuard.waitForLoop()
         guard await loopGuard.tryStartStandaloneDetermination() else {
             debug(.apsManager, "Standalone determination skipped: one is already running")
@@ -601,6 +608,8 @@ final class BaseAPSManager: APSManager, Injectable {
         simulatedBolusAmount: Decimal,
         simulatedCarbsDate: Date? = nil
     ) async -> Determination? {
+        guard TrioBackupOperationGate.shared.beginOperation() else { return nil }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         do {
             let temp = try await fetchCurrentTempBasal(date: Date.now)
             return try await openAPS.determineBasal(
@@ -637,6 +646,11 @@ final class BaseAPSManager: APSManager, Injectable {
     }
 
     func enactBolus(amount: Double, isSMB: Bool, callback: ((Bool, String) -> Void)?) async {
+        guard TrioBackupOperationGate.shared.beginOperation() else {
+            callback?(false, BackupError.operationInProgress.localizedDescription)
+            return
+        }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         if amount <= 0 {
             return
         }
@@ -1432,6 +1446,8 @@ final class BaseAPSManager: APSManager, Injectable {
 
 private extension PumpManager {
     func enactTempBasal(unitsPerHour: Double, for duration: TimeInterval) async throws {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.enactTempBasal(unitsPerHour: unitsPerHour, for: duration) { error in
                 if let error = error {
@@ -1446,6 +1462,8 @@ private extension PumpManager {
     }
 
     func enactBolus(units: Double, automatic: Bool) async throws {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let automaticValue = automatic ? BolusActivationType.automatic : BolusActivationType.manualRecommendationAccepted
 
@@ -1462,7 +1480,9 @@ private extension PumpManager {
     }
 
     func cancelBolus() async throws -> DoseEntry? {
-        try await withCheckedThrowingContinuation { continuation in
+        guard TrioBackupOperationGate.shared.beginOperation(allowRecovery: true) else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
+        return try await withCheckedThrowingContinuation { continuation in
             self.cancelBolus { result in
                 switch result {
                 case let .success(dose):
@@ -1477,6 +1497,8 @@ private extension PumpManager {
     }
 
     func suspendDelivery() async throws {
+        guard TrioBackupOperationGate.shared.beginOperation(allowRecovery: true) else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.suspendDelivery { error in
                 if let error = error {
@@ -1489,6 +1511,8 @@ private extension PumpManager {
     }
 
     func resumeDelivery() async throws {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.resumeDelivery { error in
                 if let error = error {

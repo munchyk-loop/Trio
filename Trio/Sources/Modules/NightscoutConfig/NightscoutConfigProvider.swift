@@ -38,8 +38,13 @@ extension NightscoutConfig {
                 maximumBolus: HKQuantity(unit: .internationalUnit(), doubleValue: Double(settings.maxBolus))
             )
             return Future { promise in
+                guard TrioBackupOperationGate.shared.beginOperation() else {
+                    promise(.failure(BackupError.operationInProgress))
+                    return
+                }
                 self.processQueue.async {
                     pump.syncDeliveryLimits(limits: limits) { result in
+                        defer { TrioBackupOperationGate.shared.endOperation() }
                         switch result {
                         case let .success(actual):
                             // Store the limits from the pumpManager to ensure the correct values

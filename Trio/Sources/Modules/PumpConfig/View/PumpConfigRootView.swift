@@ -85,7 +85,7 @@ extension PumpConfig {
             .onAppear(perform: configureView)
             .navigationBarTitleDisplayMode(.automatic)
             .navigationTitle("Insulin Pump")
-            .sheet(isPresented: $state.setupPump) {
+            .sheet(isPresented: $state.setupPump, onDismiss: { state.finishSetupLease() }) {
                 if let pumpManager = state.provider.apsManager.pumpManager {
                     PumpSettingsView(
                         pumpManager: pumpManager,

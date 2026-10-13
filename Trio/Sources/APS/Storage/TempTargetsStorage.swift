@@ -132,6 +132,8 @@ final class BaseTempTargetsStorage: TempTargetsStorage, Injectable {
     }
 
     @discardableResult func storeTempTarget(tempTarget: TempTarget) async throws -> NSManagedObjectID {
+        guard TrioBackupOperationGate.shared.beginOperation() else { throw BackupError.operationInProgress }
+        defer { TrioBackupOperationGate.shared.endOperation() }
         let context = makeContext()
         context.name = "storeTempTarget"
 

@@ -32,7 +32,12 @@ extension BasalProfileEditor {
             }
 
             return Future { promise in
+                guard TrioBackupOperationGate.shared.beginOperation() else {
+                    promise(.failure(BackupError.operationInProgress))
+                    return
+                }
                 pump.syncBasalRateSchedule(items: syncValues) { result in
+                    defer { TrioBackupOperationGate.shared.endOperation() }
                     switch result {
                     case .success:
                         self.storage.save(profile, as: OpenAPS.Settings.basalProfile)

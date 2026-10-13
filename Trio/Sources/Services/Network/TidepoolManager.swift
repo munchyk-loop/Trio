@@ -7,9 +7,12 @@ import LoopKit
 import LoopKitUI
 import Swinject
 import TidepoolServiceKit
+import TidepoolKit
 import UIKit
 
 protocol TidepoolManager {
+    func backupSession() throws -> Data?
+    func restoreBackupSession(_ data: Data) async throws -> Bool
     func addTidepoolService(service: Service)
     func getTidepoolServiceUI() -> ServiceUI?
     func getTidepoolPluginHost() -> PluginHost?
@@ -56,12 +59,17 @@ final class BaseTidepoolManager: TidepoolManager, Injectable {
     /// Used to filter `settingsDidChange` so UI-only changes don't trigger uploads.
     private var lastDosingMode: DosingMode?
     private var lastUnits: GlucoseUnits?
+    private var sessionObserver: AnyCancellable?
     private var tidepoolService: RemoteDataService? {
         didSet {
             if let tidepoolService = tidepoolService {
                 rawTidepoolManager = tidepoolService.rawValue
             } else {
                 rawTidepoolManager = nil
+            }
+            Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
+            sessionObserver = (tidepoolService as? TidepoolService)?.$session.sink { _ in
+                Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
             }
         }
     }
@@ -195,7 +203,38 @@ final class BaseTidepoolManager: TidepoolManager, Injectable {
 
     /// Adds a Tidepool service
     func addTidepoolService(service: Service) {
+        service.serviceDelegate = self
+        service.stateDelegate = self
         tidepoolService = service as? RemoteDataService
+    }
+
+    func backupSession() throws -> Data? {
+        guard let session = (tidepoolService as? TidepoolService)?.session else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(session)
+    }
+
+    /// Start a new service identity; never copy the original phone’s dataset/cache.
+    @MainActor func restoreBackupSession(_ data: Data) async throws -> Bool {
+        guard tidepoolService == nil else { return false }
+        let session = try JSONDecoder().decode(TSession.self, from: data)
+        guard !session.accessToken.isEmpty, !session.userId.isEmpty else { throw BackupError.invalidCloudRecord }
+        let service = TidepoolService(hostIdentifier: hostIdentifier, hostVersion: hostVersion)
+        await service.tapi.setSession(session)
+        if session.shouldRefresh() { try await service.tapi.refreshSession() }
+        _ = try await service.tapi.getUsers(userId: session.userId)
+        // Another account may have been configured while validation was in flight.
+        guard tidepoolService == nil else { return false }
+        guard let current = await service.tapi.session, current.userId == session.userId else {
+            throw BackupError.invalidCloudRecord
+        }
+        guard let identifier = service.rawState["id"] as? String else { throw BackupError.invalidCloudRecord }
+        try service.sessionStorage.setSession(current, for: "org.tidepool.TidepoolService." + identifier)
+        service.apiDidUpdateSession(current)
+        try await service.completeCreate()
+        addTidepoolService(service: service)
+        return true
     }
 
     /// Loads the Tidepool service from raw stored data
@@ -857,7 +896,11 @@ extension BaseTidepoolManager: PreferencesObserver {
 }
 
 extension BaseTidepoolManager: StatefulPluggableDelegate {
-    func pluginDidUpdateState(_: LoopKit.StatefulPluggable) {}
+    func pluginDidUpdateState(_ plugin: LoopKit.StatefulPluggable) {
+        guard let service = tidepoolService, service === plugin else { return }
+        rawTidepoolManager = service.rawValue
+        Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
+    }
 
     func pluginWantsDeletion(_: LoopKit.StatefulPluggable) {
         tidepoolService = nil

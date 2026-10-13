@@ -116,10 +116,20 @@ final class BaseDeviceDataManager: DeviceDataManager, Injectable {
                     maximumBolus: HKQuantity(unit: .internationalUnit(), doubleValue: Double(pumpSettings.maxBolus))
                 )
 
-                processQueue.async {
-                    pumpManager.syncDeliveryLimits(limits: deliveryLimits) { result in
-                        if case let .failure(error) = result {
-                            debug(.deviceManager, "syncDeliveryLimits on pump manager init failed: \(error)")
+                if TrioCloudSettingsRestore.requiresPumpReconciliation {
+                    Task { @MainActor in
+                        do {
+                            try await TrioCloudSettingsRestore.reconcilePumpAfterRecovery(settingsManager: self.settingsManager,
+                                                                                         deviceManager: self)
+                        } catch { self.errorSubject.send(error) }
+                    }
+                } else if TrioBackupOperationGate.shared.beginOperation() {
+                    processQueue.async {
+                        pumpManager.syncDeliveryLimits(limits: deliveryLimits) { result in
+                            defer { TrioBackupOperationGate.shared.endOperation() }
+                            if case let .failure(error) = result {
+                                debug(.deviceManager, "syncDeliveryLimits on pump manager init failed: \(error)")
+                            }
                         }
                     }
                 }
@@ -293,9 +303,11 @@ final class BaseDeviceDataManager: DeviceDataManager, Injectable {
             return
         }
 
+        guard TrioBackupOperationGate.shared.beginOperation() else { return }
         debug(.deviceManager, "Start updating the pump data")
         processQueue.safeSync {
             pumpManager.ensureCurrentPumpData { _ in
+                defer { TrioBackupOperationGate.shared.endOperation() }
                 debug(.deviceManager, "Pump data updated.")
                 self.updateUpdateFinished(true)
             }
@@ -340,7 +352,8 @@ final class BaseDeviceDataManager: DeviceDataManager, Injectable {
 
 extension BaseDeviceDataManager: PumpManagerDelegate {
     var automaticDosingEnabled: Bool {
-        settingsManager.settings.dosingMode.automation != .off // Trio may command the pump
+        !TrioBackupOperationGate.shared.isRestoring && !TrioCloudSettingsRestore.requiresPumpReconciliation &&
+            settingsManager.settings.dosingMode.automation != .off // Trio may command the pump
     }
 
     func pumpManager(

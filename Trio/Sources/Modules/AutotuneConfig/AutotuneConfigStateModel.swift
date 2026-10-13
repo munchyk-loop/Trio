@@ -92,7 +92,9 @@ extension AutotuneConfig {
                 let syncValues = basals.map {
                     RepeatingScheduleValue(startTime: TimeInterval($0.minutes * 60), value: Double($0.rate))
                 }
+                guard TrioBackupOperationGate.shared.beginOperation() else { return }
                 pump.syncBasalRateSchedule(items: syncValues) { result in
+                    defer { TrioBackupOperationGate.shared.endOperation() }
                     switch result {
                     case .success:
                         self.storage.save(basals, as: OpenAPS.Settings.basalProfile)

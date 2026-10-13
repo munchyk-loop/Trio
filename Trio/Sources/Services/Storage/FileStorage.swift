@@ -1,5 +1,26 @@
 import Foundation
 
+extension Foundation.Notification.Name {
+    static let trioBackupConfigurationChanged = Notification.Name("trioBackupConfigurationChanged")
+}
+
+/// Only persisted, user-editable configuration files should trigger a backup.
+/// The APS glucose, insulin delivery, prediction, and history files must never
+/// trigger change-driven backups.
+enum TrioBackupChangeFilter {
+    static func shouldBackup(file: String) -> Bool {
+        [
+            OpenAPS.Trio.settings,
+            OpenAPS.Settings.preferences,
+            OpenAPS.Settings.settings,
+            OpenAPS.Settings.basalProfile,
+            OpenAPS.Settings.carbRatios,
+            OpenAPS.Settings.insulinSensitivities,
+            OpenAPS.Settings.bgTargets
+        ].contains(file)
+    }
+}
+
 protocol FileStorage {
     func save<Value: JSON>(_ value: Value, as name: String)
     func saveAsync<Value: JSON>(_ value: Value, as name: String) async
@@ -23,11 +44,17 @@ final class BaseFileStorage: FileStorage {
 
     func save<Value: JSON>(_ value: Value, as name: String) {
         processQueue.safeSync {
+            let configuration = TrioBackupChangeFilter.shouldBackup(file: name)
+            guard !configuration || TrioBackupOperationGate.shared.beginOperation() else { return }
+            defer { if configuration { TrioBackupOperationGate.shared.endOperation() } }
             do {
                 if let value = value as? RawJSON, let data = value.data(using: .utf8) {
                     try Disk.save(data, to: .documents, as: name)
                 } else {
                     try Disk.save(value, to: .documents, as: name, encoder: JSONCoding.encoder)
+                }
+                if TrioBackupChangeFilter.shouldBackup(file: name), !TrioBackupOperationGate.shared.isRestoring {
+                    Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
                 }
             } catch {
                 debug(.storage, "Failed to save file '\(name)': \(error)")
@@ -38,11 +65,20 @@ final class BaseFileStorage: FileStorage {
     func saveAsync<Value: JSON>(_ value: Value, as name: String) async {
         await withCheckedContinuation { continuation in
             processQueue.safeSync {
+                let configuration = TrioBackupChangeFilter.shouldBackup(file: name)
+                guard !configuration || TrioBackupOperationGate.shared.beginOperation() else {
+                    continuation.resume()
+                    return
+                }
+                defer { if configuration { TrioBackupOperationGate.shared.endOperation() } }
                 do {
                     if let value = value as? RawJSON, let data = value.data(using: .utf8) {
                         try Disk.save(data, to: .documents, as: name)
                     } else {
                         try Disk.save(value, to: .documents, as: name, encoder: JSONCoding.encoder)
+                    }
+                    if TrioBackupChangeFilter.shouldBackup(file: name), !TrioBackupOperationGate.shared.isRestoring {
+                        Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
                     }
                 } catch {
                     debug(.storage, "Failed to save file '\(name)': \(error)")

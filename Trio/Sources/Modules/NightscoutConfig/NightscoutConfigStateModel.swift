@@ -103,6 +103,7 @@ extension NightscoutConfig {
                     self.message = "Connected!"
                     self.keychain.setValue(self.url, forKey: Config.urlKey)
                     self.keychain.setValue(self.secret, forKey: Config.secretKey)
+                    Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
                     self.connecting = true
                     self.isConnectedToNS = self.nightscoutAPI != nil
                 }
@@ -170,6 +171,7 @@ extension NightscoutConfig {
         func delete() {
             keychain.removeObject(forKey: Config.urlKey)
             keychain.removeObject(forKey: Config.secretKey)
+            Foundation.NotificationCenter.default.post(name: .trioBackupConfigurationChanged, object: nil)
             url = ""
             secret = ""
             isConnectedToNS = false

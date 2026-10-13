@@ -7,6 +7,7 @@ import SwiftUI
 extension PumpConfig {
     final class StateModel: BaseStateModel<Provider> {
         @Published var setupPump = false
+        private var hasSetupLease = false
         private(set) var setupPumpEntry: PumpCatalogEntry?
         @Published var pumpState: PumpDisplayState?
         private(set) var initialSettings: PumpInitialSettings = .default
@@ -37,15 +38,25 @@ extension PumpConfig {
         }
 
         func addPump(_ entry: PumpCatalogEntry) {
+            guard !hasSetupLease, TrioBackupOperationGate.shared.beginOperation() else { return }
+            hasSetupLease = true
             setupPumpEntry = entry
             setupPump = true
         }
+
+        func finishSetupLease() {
+            if hasSetupLease { hasSetupLease = false
+                TrioBackupOperationGate.shared.endOperation() }
+        }
+
+        deinit { if hasSetupLease { TrioBackupOperationGate.shared.endOperation() } }
     }
 }
 
 extension PumpConfig.StateModel: CompletionDelegate {
     func completionNotifyingDidComplete(_: CompletionNotifying) {
         setupPump = false
+        finishSetupLease()
     }
 }
 
