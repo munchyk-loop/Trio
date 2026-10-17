@@ -1,6 +1,7 @@
 import Foundation
 
 struct Preferences: JSON, Equatable {
+    var pauseAutoBolusOnSuddenRise: Bool? = nil
     var maxIOB: Decimal = 0
     var maxDailySafetyMultiplier: Decimal = 3
     var currentBasalSafetyMultiplier: Decimal = 4
@@ -57,6 +58,7 @@ struct Preferences: JSON, Equatable {
 
 extension Preferences {
     private enum CodingKeys: String, CodingKey {
+        case pauseAutoBolusOnSuddenRise
         case maxIOB = "max_iob"
         case maxDailySafetyMultiplier = "max_daily_safety_multiplier"
         case currentBasalSafetyMultiplier = "current_basal_safety_multiplier"
@@ -123,6 +125,7 @@ extension Preferences: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         var preferences = Preferences()
+        preferences.pauseAutoBolusOnSuddenRise = try? container.decode(Bool.self, forKey: .pauseAutoBolusOnSuddenRise)
 
         if let maxIOB = try? container.decode(Decimal.self, forKey: .maxIOB) {
             preferences.maxIOB = maxIOB

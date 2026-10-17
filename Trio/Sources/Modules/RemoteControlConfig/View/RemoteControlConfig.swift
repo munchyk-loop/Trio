@@ -99,7 +99,7 @@ extension RemoteControlConfig {
             }
             .scrollContentBackground(.hidden).background(appState.trioBackgroundColor(for: colorScheme))
             .onAppear(perform: configureView)
-            .navigationTitle("Remote Control")
+            .navigationTitle("Caregivers")
             .navigationBarTitleDisplayMode(.automatic)
             .settingsHighlightScroll()
         }

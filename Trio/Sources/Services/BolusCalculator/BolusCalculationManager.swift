@@ -343,6 +343,7 @@ final class BaseBolusCalculationManager: BolusCalculationManager, Injectable {
             // This prevents double-counting of carbs (entered carbs + COB from backdated entry)
             let effectiveCarbs = isBackdated ? 0 : carbs
             let effectiveCob = isBackdated ? simulatedCOB : bolusVars.cob
+            let factors = settingsManager.settings.manualBolusFactors(slow: useFattyMealCorrection, fast: useSuperBolus)
 
             return CalculationInput(
                 carbs: effectiveCarbs,
@@ -354,11 +355,11 @@ final class BaseBolusCalculationManager: BolusCalculationManager, Injectable {
                 iob: bolusVars.iob,
                 cob: effectiveCob ?? bolusVars.cob,
                 useFattyMealCorrectionFactor: useFattyMealCorrection,
-                fattyMealFactor: settings.fattyMealFactor,
+                fattyMealFactor: factors.slowFactor,
                 useSuperBolus: useSuperBolus,
                 sweetMealFactor: settings.sweetMealFactor,
                 basal: bolusVars.basal,
-                fraction: settings.fraction,
+                fraction: factors.fraction,
                 maxBolus: maxBolus,
                 maxIOB: maxIOB,
                 maxCOB: maxCOB,
@@ -532,6 +533,13 @@ final class BaseBolusCalculationManager: BolusCalculationManager, Injectable {
                 wholeCobInsulin: 0
             )
         }
+    }
+}
+
+extension TrioSettings {
+    func manualBolusFactors(slow: Bool, fast: Bool) -> (fraction: Decimal, slowFactor: Decimal) {
+        if slow, let ratio = slowAbsorptionDeliveryRatio { return (ratio, 1) }
+        return (fast ? fastAbsorptionDeliveryRatio ?? overrideFactor : overrideFactor, fattyMealFactor)
     }
 }
 

@@ -477,14 +477,6 @@ import Testing
         #expect(AlarmSoundCatalog.allFilenames.contains("high_chimes.caf"))
     }
 
-    @Test("A stored config without playsSound falls back to the tier default") func decodeFallbackMatchesDefault() throws {
-        for severity in DeviceAlertSeverity.allCases {
-            let json = #"{"severity":"\#(severity.rawValue)","activeOption":"always"}"#
-            let decoded = try JSONDecoder().decode(DeviceAlertSeverityConfig.self, from: Data(json.utf8))
-            #expect(decoded.playsSound == severity.defaultPlaysSound)
-        }
-    }
-
     @Test("Glucose alarms still default to sound on") func glucoseAlarmsKeepSound() {
         for type in GlucoseAlertType.allCases {
             #expect(GlucoseAlert(type: type).playsSound)

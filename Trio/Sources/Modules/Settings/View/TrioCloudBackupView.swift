@@ -109,13 +109,13 @@ struct TrioCloudBackupView: View {
                         .map { "Last successful backup: \($0.formatted(date: .abbreviated, time: .shortened))" } ??
                         "No recent backups."
                 )
-            }.listRowBackground(Color.chart)
+            }
             Section {
                 NavigationLink("View Backups") { TrioCloudBackupBrowser() }
-            }.listRowBackground(Color.chart)
+            }
             Section {
                 NavigationLink("Configuration") { TrioCloudBackupConfigurationView() }
-            }.listRowBackground(Color.chart)
+            }
             Section("Local Backup") {
                 Button("Export Backup File") {
                     Task { await perform(.export) {
@@ -131,10 +131,9 @@ struct TrioCloudBackupView: View {
                     importing = true
                 }
                 .buttonStyle(.borderless)
-            }.listRowBackground(Color.chart)
+            }
         }
-        .scrollContentBackground(.hidden)
-        .background(appState.trioBackgroundColor(for: colorScheme))
+
         .listSectionSpacing(sectionSpacing)
         .allowsHitTesting(operation == nil && !importing)
     }
@@ -158,4 +157,3 @@ private extension TrioSettingsBackup {
         .init(id: id.uuidString, createdAt: createdAt, origin: origin, name: name, fingerprint: fingerprint)
     }
 }
-

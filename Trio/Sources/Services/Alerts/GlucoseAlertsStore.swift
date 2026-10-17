@@ -6,6 +6,8 @@ import Foundation
 /// flow back to disk on the next runloop.
 final class GlucoseAlertsStore: ObservableObject {
     static let shared = GlucoseAlertsStore()
+    static let alertsStorageKey = "trio.glucoseAlerts.v2"
+    static let configurationStorageKey = "trio.glucoseAlertConfiguration.v2"
 
     @Published var alerts: [GlucoseAlert]
     @Published var configuration: GlucoseAlertConfiguration
@@ -18,8 +20,8 @@ final class GlucoseAlertsStore: ObservableObject {
 
     init(
         defaults: UserDefaults = .standard,
-        alertsKey: String = "trio.glucoseAlerts.v1",
-        configKey: String = "trio.glucoseAlertConfiguration.v1"
+        alertsKey: String = GlucoseAlertsStore.alertsStorageKey,
+        configKey: String = GlucoseAlertsStore.configurationStorageKey
     ) {
         self.defaults = defaults
         self.alertsKey = alertsKey
@@ -33,19 +35,20 @@ final class GlucoseAlertsStore: ObservableObject {
         bind()
     }
 
-    /// Seed every glucose alarm enabled. Users running a stock CGM app for
+    /// Seed the standard glucose alarms enabled; Falling Fast starts disabled. Users running a stock CGM app for
     /// low/high notifications can disable the duplicates per-alarm; the
     /// safer default is to have Trio alert until the user opts out.
     /// `urgentLow` cannot be disabled from the editor regardless — it's the
     /// safety floor — but the stored flag is kept honest so the UI binding
     /// stays simple.
-    private static func defaultAlerts() -> [GlucoseAlert] {
+    static func defaultAlerts() -> [GlucoseAlert] {
         [
             GlucoseAlert(type: .urgentLow),
             GlucoseAlert(type: .low),
             GlucoseAlert(type: .forecastedLow),
             GlucoseAlert(type: .high),
-            GlucoseAlert(type: .carbsRequired)
+            GlucoseAlert(type: .carbsRequired),
+            GlucoseAlert(type: .fallingFast)
         ]
     }
 
@@ -121,11 +124,7 @@ final class GlucoseAlertsStore: ObservableObject {
     }
 
     private static func savedAlerts(defaults: UserDefaults, key: String) -> [GlucoseAlert] {
-        let loaded = Self.decode([GlucoseAlert].self, from: defaults, key: key) ?? []
-        guard !loaded.isEmpty else { return Self.defaultAlerts() }
-        // Initialization and rollback must use the same upgrade/backfill rules.
-        let present = Set(loaded.map(\.type))
-        return loaded + GlucoseAlertType.allCases.filter { !present.contains($0) }.map { GlucoseAlert(type: $0) }
+        Self.decode([GlucoseAlert].self, from: defaults, key: key) ?? Self.defaultAlerts()
     }
 
     // MARK: - Codable helpers

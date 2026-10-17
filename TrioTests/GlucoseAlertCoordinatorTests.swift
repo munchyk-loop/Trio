@@ -83,9 +83,9 @@ import Testing
         #expect(!GlucoseAlertType.carbsRequired.isReadingDriven)
     }
 
-    @Test("Only high/low/urgentLow are reading-driven") func readingDrivenSetIsExact() {
+    @Test("Threshold and falling-fast alarms are reading-driven") func readingDrivenSetIsExact() {
         let readingDriven = Set(GlucoseAlertType.allCases.filter(\.isReadingDriven))
-        #expect(readingDriven == [.high, .low, .urgentLow])
+        #expect(readingDriven == [.high, .low, .urgentLow, .fallingFast])
     }
 
     @Test("CGM-owned retraction keeps determination-driven alarms firing") func retractsOnlyReadingDrivenAlarms() {

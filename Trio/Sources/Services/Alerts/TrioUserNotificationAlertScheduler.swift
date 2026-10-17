@@ -58,7 +58,8 @@ final class TrioUserNotificationAlertScheduler {
     }
 
     private func sound(for alert: Alert, muted: Bool, soundURL: URL?) -> UNNotificationSound? {
-        let isCritical = alert.interruptionLevel == .critical
+        let isCritical = alert.interruptionLevel == .critical &&
+            (alert.metadata?["settings.soundMode"]?.wrapped as? String) != SettingsAlertSoundMode.matchPhone.rawValue
         if muted {
             return isCritical ? .defaultCriticalSound(withAudioVolume: 0) : nil
         }

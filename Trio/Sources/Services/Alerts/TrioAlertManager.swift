@@ -181,15 +181,18 @@ final class BaseTrioAlertManager: TrioAlertManager, Injectable {
     /// through UNNotification at fire time. No-op when muted or non-critical.
     private func playCriticalAudioFallbackIfNeeded(_ alert: Alert, muted: Bool) {
         guard alert.interruptionLevel == .critical, !muted else { return }
+        guard (alert.metadata?["settings.soundMode"]?.wrapped as? String) != SettingsAlertSoundMode.matchPhone.rawValue
+        else { return }
         // Honor `playsSound: false` (alert was issued with sound: nil) —
         // user explicitly opted out of audio on this alarm.
         guard let soundName = alert.sound?.filename else { return }
         Task { @MainActor in
             // AlarmKit pierces silent/Focus and survives app suspension.
             if alarmScheduler == nil { alarmScheduler = CriticalAlertAlarmScheduler() }
-            let scheduled = alarmScheduler?.scheduleAlarm(for: alert) { [weak self] in
+            let useAlarmKit = (alert.metadata?["settings.delivery"]?.wrapped as? String) != SettingsAlertDelivery.critical.rawValue
+            let scheduled = useAlarmKit && (alarmScheduler?.scheduleAlarm(for: alert) { [weak self] in
                 Task { @MainActor in self?.playAudioFallback(soundNamed: soundName) }
-            } ?? false
+            } ?? false)
             guard !scheduled else { return }
             // Fallback: in-process audio. Only sounds while Trio is running.
             playAudioFallback(soundNamed: soundName)
@@ -224,6 +227,7 @@ final class BaseTrioAlertManager: TrioAlertManager, Injectable {
         // passed through with the level and sound its producer chose.
         let effective: Alert
         if let entry = AlertCatalogRegistry.lookup(alert.identifier) {
+            guard SettingsSystemAlertPreferences.current.allows(entry) else { return }
             // Tier comes from the catalog, never from the post-override
             // level: a Time-Sensitive alarm with "Override Silence & Focus"
             // on still snoozes and configures as Time-Sensitive.
@@ -243,7 +247,9 @@ final class BaseTrioAlertManager: TrioAlertManager, Injectable {
                 )
                 return
             }
-            effective = Self.applyDeviceSeverityConfig(config, entry: entry, to: alert)
+            effective = SettingsSystemAlertPreferences.current.apply(
+                to: Self.applyDeviceSeverityConfig(config, entry: entry, to: alert), entry: entry
+            )
         } else {
             effective = alert
         }
@@ -268,6 +274,8 @@ final class BaseTrioAlertManager: TrioAlertManager, Injectable {
         // AlarmKit sounds critical alerts itself; posting the notification with
         // a sound too would play the tone twice, at once.
         let alarmKitWillSound = alarmKitAvailable
+            && (effective.metadata?["settings.soundMode"]?.wrapped as? String) != SettingsAlertSoundMode.matchPhone.rawValue
+            && (effective.metadata?["settings.delivery"]?.wrapped as? String) != SettingsAlertDelivery.critical.rawValue
             && effective.interruptionLevel == .critical
             && effective.sound?.filename != nil
             && !muted
@@ -456,18 +464,10 @@ final class BaseTrioAlertManager: TrioAlertManager, Injectable {
     /// Persisted under the same key UN reads, so a force-quit + relaunch
     /// during a snooze sees the same end-date.
     private static let snoozeUntilDateKey = "UserNotificationsManager.snoozeUntilDate"
-    private static let legacyGlucoseNotificationID = "Trio.glucoseNotification"
 
     @MainActor func applySnooze(for duration: TimeInterval) async {
         let untilDate = duration > 0 ? Date().addingTimeInterval(duration) : .distantPast
         UserDefaults.standard.set(untilDate, forKey: Self.snoozeUntilDateKey)
-
-        // Legacy glucose-notification UN cleanup (the new pipeline uses
-        // per-alarm identifiers; this catches anything still lingering
-        // from older installs).
-        let center = UNUserNotificationCenter.current()
-        center.removeDeliveredNotifications(withIdentifiers: [Self.legacyGlucoseNotificationID])
-        center.removePendingNotificationRequests(withIdentifiers: [Self.legacyGlucoseNotificationID])
 
         if duration > 0 {
             muter.mute(for: duration)
@@ -529,7 +529,11 @@ extension BaseTrioAlertManager: TrioModalAlertResponder, TrioUserNotificationAle
     func requestSnooze(identifier: Alert.Identifier, duration: TimeInterval) {
         // Dismissal is the user's response — full ack (history + device) first.
         handleAcknowledgement(identifier: identifier)
-        let untilDate = duration > 0 ? Date().addingTimeInterval(duration) : .distantPast
+        let customMinutes = GlucoseAlertsStore.shared.alerts.first {
+            identifier.alertIdentifier.hasSuffix($0.id.uuidString)
+        }?.snoozeMinutes
+        let configuredDuration = duration == 15 * 60 ? customMinutes.map { TimeInterval(max(1, min($0, 60)) * 60) } ?? duration : duration
+        let untilDate = configuredDuration > 0 ? Date().addingTimeInterval(configuredDuration) : .distantPast
         if let glucoseType = GlucoseAlertType(slug: identifier.alertIdentifier) {
             broadcaster.notify(GlucoseSnoozeObserver.self, on: .main) { (observer: GlucoseSnoozeObserver) in
                 observer.snoozeGlucoseType(glucoseType, until: untilDate)

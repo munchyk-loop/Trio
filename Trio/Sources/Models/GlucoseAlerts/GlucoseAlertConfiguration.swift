@@ -22,16 +22,6 @@ struct GlucoseAlertConfiguration: Codable, Equatable {
         case forceTrioAlertsWhenCGMProvidesOwn
     }
 
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        dayStart = try container.decode(TimeOfDay.self, forKey: .dayStart)
-        nightStart = try container.decode(TimeOfDay.self, forKey: .nightStart)
-        forceTrioAlertsWhenCGMProvidesOwn = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .forceTrioAlertsWhenCGMProvidesOwn
-        ) ?? false
-    }
-
     /// Resolve whether `date` falls into the user's "night" window. Mirrors
     /// LoopFollow's logic: handles both same-day (06→22) and wrap-around
     /// (22→06) ranges. When `nightStart >= dayStart`, night is "later than

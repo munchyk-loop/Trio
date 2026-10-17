@@ -295,7 +295,7 @@ struct SettingInputSection<VerboseHint: View>: View {
                 selectedVerboseHint = shouldDisplayHint.wrappedValue ? verboseHint : nil
             }) {
                 HStack {
-                    Image(systemName: "questionmark.circle")
+                    Image(systemName: "info.circle")
                 }
             }
             .buttonStyle(BorderlessButtonStyle())

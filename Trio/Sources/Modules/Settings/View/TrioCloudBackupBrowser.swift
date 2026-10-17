@@ -60,12 +60,11 @@ struct TrioCloudBackupBrowser: View {
                                     .contextMenu { managementActions(entry, inContextMenu: true) }
                             }
                             if entries.isEmpty && !loading { Text("No backups found").foregroundStyle(.secondary) }
-                        }.listRowBackground(Color.chart)
+                        }
                     }
                 }
                 .listSectionSpacing(sectionSpacing)
-                .scrollContentBackground(.hidden)
-                .background(appState.trioBackgroundColor(for: colorScheme))
+
                 .navigationTitle("View Backups")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { refreshButton } }
@@ -164,7 +163,7 @@ struct TrioCloudBackupBrowser: View {
     }
 
     @ViewBuilder private var status: some View {
-        if let error { Text(error).foregroundStyle(.secondary).listRowBackground(Color.chart) }
+        if let error { Text(error).foregroundStyle(.secondary) }
         if !canManage && backups.isEmpty && !busy && error == nil {
             Text("No backups found").foregroundStyle(.secondary)
         }
@@ -200,7 +199,6 @@ struct TrioCloudBackupBrowser: View {
         } catch { self.error = error.localizedDescription }
     }
 }
-
 
 private struct TrioCloudBackupRow: View {
     let entry: TrioCloudBackupEntry

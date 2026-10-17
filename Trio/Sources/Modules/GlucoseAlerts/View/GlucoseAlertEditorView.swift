@@ -53,6 +53,14 @@ struct GlucoseAlertEditorView: View {
                 case .forecastedLow: forecastedLowBody
                 case .high: highBody
                 case .carbsRequired: carbsRequiredBody
+                case .fallingFast:
+                    SettingsNumberRow(
+                        title: "Fall Rate",
+                        value: $working.thresholdMgDL,
+                        spec: PickerSetting(value: 2, step: 0.5, min: 0.5, max: 10, type: .glucose),
+                        units: units,
+                        suffix: "mg/dL/min"
+                    )
                 }
 
                 AlarmActiveSection(

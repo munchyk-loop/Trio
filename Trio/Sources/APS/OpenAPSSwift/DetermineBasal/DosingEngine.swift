@@ -124,7 +124,7 @@ enum DosingEngine {
         }
 
         let maxDeltaGlucoseThreshold = min(profile.maxDeltaBgThreshold, 0.4)
-        if glucoseStatus.maxDelta > maxDeltaGlucoseThreshold * currentGlucose {
+        if profile.pauseAutoBolusOnSuddenRise != false, glucoseStatus.maxDelta > maxDeltaGlucoseThreshold * currentGlucose {
             reason =
                 "maxDelta \(glucoseStatus.maxDelta.jsRounded()) > \(100 * maxDeltaGlucoseThreshold)% of BG \(currentGlucose.jsRounded()) - SMB disabled!, "
             smbIsEnabled = false

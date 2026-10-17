@@ -1224,7 +1224,7 @@ var maxDelta_bg_threshold;
     if (typeof profile.maxDelta_bg_threshold !== 'undefined') {
         maxDelta_bg_threshold = Math.min(profile.maxDelta_bg_threshold, 0.4);
     }
-    if ( maxDelta > maxDelta_bg_threshold * bg ) {
+    if ( profile.pauseAutoBolusOnSuddenRise !== false && maxDelta > maxDelta_bg_threshold * bg ) {
         console.error("maxDelta " + convert_bg(maxDelta, profile)+ " > " + 100 * maxDelta_bg_threshold + "% of BG " + convert_bg(bg, profile) + " - disabling SMB");
         rT.reason += "maxDelta " + convert_bg(maxDelta, profile) + " > " + 100 * maxDelta_bg_threshold + "% of BG " + convert_bg(bg, profile) + " - SMB disabled!, ";
         enableSMB = false;

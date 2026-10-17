@@ -16,6 +16,9 @@ enum BolusShortcutLimit: String, JSON, CaseIterable, Identifiable {
 }
 
 struct TrioSettings: JSON, Equatable, Encodable {
+    var userProfile: SettingsUserProfile? = nil
+    var slowAbsorptionDeliveryRatio: Decimal? = nil
+    var fastAbsorptionDeliveryRatio: Decimal? = nil
     var units: GlucoseUnits = .mgdL
     var dosingMode: DosingMode = .open
     var isUploadEnabled: Bool = false
@@ -130,6 +133,9 @@ extension TrioSettings: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         var settings = TrioSettings()
+        settings.userProfile = try? container.decode(SettingsUserProfile.self, forKey: .userProfile)
+        settings.slowAbsorptionDeliveryRatio = try? container.decode(Decimal.self, forKey: .slowAbsorptionDeliveryRatio)
+        settings.fastAbsorptionDeliveryRatio = try? container.decode(Decimal.self, forKey: .fastAbsorptionDeliveryRatio)
 
         if let units = try? container.decode(GlucoseUnits.self, forKey: .units) {
             settings.units = units

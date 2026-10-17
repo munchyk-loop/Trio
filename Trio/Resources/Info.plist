@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Trio uses your location to activate the alert profiles you configure for specific places.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Allow Trio to activate your location-based alert profiles when you arrive or leave, including while Trio is in the background.</string>
 	<key>AppGroupID</key>
 	<string>$(APP_GROUP_ID)</string>
 	<key>AppDevVersion</key>

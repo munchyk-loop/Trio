@@ -27,6 +27,7 @@ extension Profile {
         remainingCarbsFraction = preferences.remainingCarbsFraction
         enableSMBHighBgTarget = preferences.enableSMB_high_bg_target
         maxDeltaBgThreshold = preferences.maxDeltaBGthreshold
+        pauseAutoBolusOnSuddenRise = preferences.pauseAutoBolusOnSuddenRise == false ? false : nil
         insulinPeakTime = preferences.insulinPeakTime
         noisyCGMTargetMultiplier = preferences.noisyCGMTargetMultiplier
         adjustmentFactor = preferences.adjustmentFactor

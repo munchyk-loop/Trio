@@ -10,6 +10,8 @@ import LoopKit
 /// on first launch so every severity has a baseline that always matches.
 final class DeviceAlertsStore: ObservableObject {
     static let shared = DeviceAlertsStore()
+    static let configsStorageKey = "trio.deviceAlertSeverityConfigs.v2"
+    static let snoozesStorageKey = "trio.deviceAlertTierSnoozes.v2"
 
     @Published var configs: [DeviceAlertSeverityConfig]
     /// Per-tier snooze expirations keyed by `DeviceAlertSeverity.rawValue`.
@@ -23,8 +25,8 @@ final class DeviceAlertsStore: ObservableObject {
 
     init(
         defaults: UserDefaults = .standard,
-        configsKey: String = "trio.deviceAlertSeverityConfigs.v1",
-        snoozesKey: String = "trio.deviceAlertTierSnoozes.v1"
+        configsKey: String = DeviceAlertsStore.configsStorageKey,
+        snoozesKey: String = DeviceAlertsStore.snoozesStorageKey
     ) {
         self.defaults = defaults
         self.configsKey = configsKey
@@ -75,11 +77,7 @@ final class DeviceAlertsStore: ObservableObject {
         at _: Date,
         isNight: Bool
     ) -> DeviceAlertSeverityConfig? {
-        // Critical configs are always considered enabled — the editor hides
-        // the Enabled toggle on this tier, but legacy stored data may still
-        // carry `isEnabled = false` from a prior install. Honoring that
-        // flag here would silence the alarm despite the UI no longer
-        // exposing a way to re-enable it.
+        // Urgent alerts are always enabled, including configurations restored from a backup.
         let matching = configs.filter { config in
             guard config.severity == severity else { return false }
             return severity == .critical || config.isEnabled
@@ -133,12 +131,11 @@ final class DeviceAlertsStore: ObservableObject {
     }
 
     private static func savedConfigs(defaults: UserDefaults, key: String) -> [DeviceAlertSeverityConfig] {
-        var restored = Self.decode([DeviceAlertSeverityConfig].self, from: defaults, key: key) ?? []
-        for severity in DeviceAlertSeverity.allCases
-            where !restored.contains(where: { $0.severity == severity && $0.activeOption == .always }) {
-            restored.append(DeviceAlertSeverityConfig(severity: severity, activeOption: .always))
-        }
-        return Self.sorted(restored)
+        Self.sorted(Self.decode([DeviceAlertSeverityConfig].self, from: defaults, key: key) ?? defaultConfigs())
+    }
+
+    static func defaultConfigs() -> [DeviceAlertSeverityConfig] {
+        DeviceAlertSeverity.allCases.map { DeviceAlertSeverityConfig(severity: $0) }
     }
 
     // MARK: - Sorting + Codable helpers

@@ -46,18 +46,4 @@ struct DeviceAlertSeverityConfig: Codable, Equatable, Identifiable {
         case overridesSilenceAndDND
         case activeOption
     }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
-        severity = try container.decode(DeviceAlertSeverity.self, forKey: .severity)
-        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
-        soundFilename = try container.decodeIfPresent(String.self, forKey: .soundFilename) ?? severity.defaultSoundFilename
-        playsSound = try container.decodeIfPresent(Bool.self, forKey: .playsSound) ?? severity.defaultPlaysSound
-        overridesSilenceAndDND = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .overridesSilenceAndDND
-        ) ?? severity.defaultOverridesSilenceAndDND
-        activeOption = try container.decodeIfPresent(ActiveOption.self, forKey: .activeOption) ?? .always
-    }
 }

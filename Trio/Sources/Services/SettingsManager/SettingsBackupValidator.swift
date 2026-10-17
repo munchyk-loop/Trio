@@ -55,6 +55,12 @@ extension TrioSettingsBackup {
         result.preferences.bolusIncrement = 0.1
         if var app = result.appConfiguration {
             for index in app.glucoseAlerts.indices { app.glucoseAlerts[index].snoozedUntil = nil }
+            if var profiles = app.alertProfiles {
+                for index in profiles.indices {
+                    for alarm in profiles[index].alerts.indices { profiles[index].alerts[alarm].snoozedUntil = nil }
+                }
+                app.alertProfiles = profiles
+            }
             result.appConfiguration = app
         }
         result.basalProfile = value.basalProfile
@@ -100,6 +106,13 @@ extension TrioSettingsBackup {
             let identity = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
             for index in app.glucoseAlerts.indices { app.glucoseAlerts[index].id = identity }
             for index in app.deviceAlertConfigurations.indices { app.deviceAlertConfigurations[index].id = identity }
+            if var profiles = app.alertProfiles {
+                for index in profiles.indices {
+                    profiles[index].id = identity
+                    for alarm in profiles[index].alerts.indices { profiles[index].alerts[alarm].id = identity }
+                }
+                app.alertProfiles = profiles
+            }
             value.appConfiguration = app
         }
         return try legacySettings ? digest(encoded(LegacyBackupConfiguration(value: value))) : digest(encoded(value))
@@ -197,6 +210,13 @@ extension TrioSettingsBackup {
         func optional(_ value: Decimal?, _ check: (Decimal) -> Bool) -> Bool { value.map(check) ?? true }
         let prefs = value.preferences
         let limits = DecimalPickerSettings()
+        for ratio in [value.settings.slowAbsorptionDeliveryRatio, value.settings.fastAbsorptionDeliveryRatio].compactMap({ $0 }) {
+            guard positive(ratio), ratio <= limits.overrideFactor.max else { throw BackupError.invalidTherapyConfiguration }
+        }
+        if let profile = value.settings.userProfile {
+            guard profile.heightCM.map({ $0.isFinite && $0 > 0 }) ?? true,
+                  profile.weightKG.map({ $0.isFinite && $0 > 0 }) ?? true else { throw BackupError.invalidTherapyConfiguration }
+        }
         guard value.pumpSettings.insulinActionCurve >= limits.dia.min,
               value.pumpSettings.insulinActionCurve <= limits.dia.max,
               value.pumpSettings.maxBolus <= limits.maxBolus.max,
@@ -252,6 +272,28 @@ extension TrioSettingsBackup {
                   optional($0.carbs, nonnegative) && optional($0.fat, nonnegative) && optional($0.protein, nonnegative)
               }) else { throw BackupError.invalidTherapyConfiguration }
         if let app = value.appConfiguration {
+            if let profiles = app.alertProfiles {
+                guard profiles.filter(\.isFallback).count == 1,
+                      profiles.first(where: \.isFallback)?.isEnabled == true,
+                      Set(profiles.map(\.id)).count == profiles.count,
+                      profiles.allSatisfy({ profile in
+                          let schedule = profile.schedule
+                          return !profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                              (0 ..< 1440).contains(schedule.startMinute) && (0 ..< 1440).contains(schedule.endMinute) &&
+                              schedule.weekdays.isSubset(of: Set(1 ... 7)) &&
+                              (schedule.kind != .time || !schedule.weekdays.isEmpty) &&
+                              schedule.latitude.isFinite && abs(schedule.latitude) <= 90 &&
+                              schedule.longitude.isFinite && abs(schedule.longitude) <= 180 &&
+                              schedule.radius.isFinite && (100 ... 2000).contains(schedule.radius) &&
+                              Set(profile.alerts.map(\.id)).count == profile.alerts.count &&
+                              profile.alerts.contains(where: { $0.type == .urgentLow }) &&
+                              profile.alerts.allSatisfy({
+                                  nonnegative($0.thresholdMgDL) && $0.snoozedUntil == nil &&
+                                      ($0.snoozeMinutes.map { (1 ... 60).contains($0) } ?? true)
+                              })
+                      })
+                else { throw BackupError.invalidTherapyConfiguration }
+            }
             let times = [app.glucoseAlertConfiguration.dayStart, app.glucoseAlertConfiguration.nightStart]
             guard times.allSatisfy({ (0 ..< 24).contains($0.hour) && (0 ..< 60).contains($0.minute) }),
                   app.glucoseAlerts.allSatisfy({ nonnegative($0.thresholdMgDL) && $0.snoozedUntil == nil }),

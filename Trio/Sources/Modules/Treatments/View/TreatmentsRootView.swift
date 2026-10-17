@@ -242,7 +242,7 @@ extension Treatments {
                 HStack(spacing: 10) {
                     if state.fattyMeals {
                         Toggle(isOn: $state.useFattyMealCorrectionFactor) {
-                            Text("Reduced Bolus")
+                            Text("Slow Absorption")
                         }
                         .toggleStyle(RadioButtonToggleStyle())
                         .font(.footnote)
@@ -257,7 +257,7 @@ extension Treatments {
                     }
                     if state.sweetMeals {
                         Toggle(isOn: $state.useSuperBolus) {
-                            Text("Super Bolus")
+                            Text("Fast Absorption")
                         }
                         .toggleStyle(RadioButtonToggleStyle())
                         .font(.footnote)

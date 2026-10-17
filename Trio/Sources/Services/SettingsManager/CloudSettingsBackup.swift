@@ -4,7 +4,7 @@ import Foundation
 /// Portable configuration, preset templates, and historical TDD summaries.
 /// Excludes credentials, device pairing, active delivery state, and treatment events.
 struct TrioSettingsBackup: Codable {
-    static let currentSchema = 5
+    static let currentSchema = 6
     static let maximumSize = 8 * 1024 * 1024
 
     enum Origin: String, Codable, CaseIterable, Hashable {
@@ -134,25 +134,44 @@ struct TrioSettingsBackup: Codable {
         var glucoseAlerts: [GlucoseAlert]
         let glucoseAlertConfiguration: GlucoseAlertConfiguration
         var deviceAlertConfigurations: [DeviceAlertSeverityConfig]
+        var alertProfiles: [SettingsAlertProfile]? = nil
+        var systemAlerts: SettingsSystemAlertPreferences? = nil
 
         static let keys = [
             "colorSchemePreference",
             "liveActivityOrder",
-            "trio.glucoseAlerts.v1",
-            "trio.glucoseAlertConfiguration.v1",
-            "trio.deviceAlertSeverityConfigs.v1"
+            GlucoseAlertsStore.alertsStorageKey,
+            GlucoseAlertsStore.configurationStorageKey,
+            DeviceAlertsStore.configsStorageKey,
+            SettingsAlertProfilesStore.storageKey,
+            SettingsSystemAlertPreferences.key
         ]
 
         static func capture(defaults: UserDefaults = .standard) -> Self {
             // Stores own the effective saved configuration. Never include snoozes.
-            var alerts = GlucoseAlertsStore.shared.alerts
+            let savedProfiles = defaults.data(forKey: keys[5]).flatMap {
+                try? JSONDecoder().decode([SettingsAlertProfile].self, from: $0)
+            }
+            var alerts = savedProfiles?.first(where: \.isFallback)?.alerts ?? GlucoseAlertsStore.shared.alerts
             for index in alerts.indices { alerts[index].snoozedUntil = nil }
             return Self(
                 appearance: ColorSchemeOption(rawValue: defaults.string(forKey: keys[0]) ?? "") ?? .systemDefault,
                 liveActivityOrder: defaults.stringArray(forKey: keys[1]),
                 glucoseAlerts: alerts,
                 glucoseAlertConfiguration: GlucoseAlertsStore.shared.configuration,
-                deviceAlertConfigurations: DeviceAlertsStore.shared.configs
+                deviceAlertConfigurations: DeviceAlertsStore.shared.configs,
+                alertProfiles: defaults.data(forKey: keys[5]).flatMap {
+                    try? JSONDecoder().decode([SettingsAlertProfile].self, from: $0)
+                }.map { profiles in
+                    profiles.map { profile in
+                        var clean = profile
+                        for index in clean.alerts.indices { clean.alerts[index].snoozedUntil = nil }
+                        return clean
+                    }
+                },
+                systemAlerts: defaults.data(forKey: keys[6]).flatMap {
+                    try? JSONDecoder().decode(SettingsSystemAlertPreferences.self, from: $0)
+                }
             )
         }
 
@@ -161,15 +180,32 @@ struct TrioSettingsBackup: Codable {
             let alerts = try JSONEncoder().encode(glucoseAlerts)
             let config = try JSONEncoder().encode(glucoseAlertConfiguration)
             let devices = try JSONEncoder().encode(deviceAlertConfigurations)
+            let profiles = try alertProfiles.map { try JSONEncoder().encode($0) }
+            let system = try systemAlerts.map { try JSONEncoder().encode($0) }
             defaults.set(appearance.rawValue, forKey: Self.keys[0])
             defaults.set(liveActivityOrder, forKey: Self.keys[1])
             defaults.set(alerts, forKey: Self.keys[2])
             defaults.set(config, forKey: Self.keys[3])
             defaults.set(devices, forKey: Self.keys[4])
+            defaults.set(profiles, forKey: Self.keys[5])
+            defaults.set(system, forKey: Self.keys[6])
             GlucoseAlertsStore.shared.alerts = glucoseAlerts
             GlucoseAlertsStore.shared.configuration = glucoseAlertConfiguration
             DeviceAlertsStore.shared.configs = deviceAlertConfigurations
             Foundation.NotificationCenter.default.post(name: .liveActivityOrderDidChange, object: nil)
+            Foundation.NotificationCenter.default.post(name: Notification.Name("trio.alertProfilesRestored"), object: nil)
+        }
+
+        func alertsForRestore() -> Self {
+            guard alertProfiles == nil else { return self }
+            let fresh = GlucoseAlertsStore.defaultAlerts()
+            return Self(
+                appearance: appearance, liveActivityOrder: liveActivityOrder,
+                glucoseAlerts: fresh, glucoseAlertConfiguration: .init(),
+                deviceAlertConfigurations: DeviceAlertsStore.defaultConfigs(),
+                alertProfiles: [SettingsAlertProfile(name: String(localized: "Default"), isFallback: true, alerts: fresh)],
+                systemAlerts: .init()
+            )
         }
     }
 
@@ -299,7 +335,6 @@ struct TrioSettingsBackup: Codable {
             dynamicISFHistory: history, historyChecksum: try Self.historyDigest(history)
         )
     }
-
 }
 
 extension TrioSettingsBackup {
@@ -377,4 +412,3 @@ enum BackupError: LocalizedError, Equatable {
         }
     }
 }
-

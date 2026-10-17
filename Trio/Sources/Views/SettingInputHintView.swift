@@ -9,31 +9,20 @@ struct SettingInputHintView<HintView: View>: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                DefinitionRow(
-                    term: hintLabel,
-                    definition: hintText,
-                    fontSize: .body
-                )
-                .listRowBackground(Color.gray.opacity(0.1))
+            ScrollView {
+                DefinitionRow(term: hintLabel, definition: hintText, fontSize: .body)
+                    .padding()
             }
-            .scrollContentBackground(.hidden)
-            .navigationBarTitle(sheetTitle, displayMode: .inline)
-
-            Spacer()
-
-            Button {
-                shouldDisplayHint.toggle()
-            } label: {
-                Text("Got it!").bold().frame(maxWidth: .infinity, minHeight: 30, alignment: .center)
+            .navigationTitle(sheetTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { shouldDisplayHint = false } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close")
+                }
             }
-            .buttonStyle(.bordered)
-            .padding(.top)
         }
-        .padding()
-        .presentationDetents(
-            [.fraction(0.9), .large],
-            selection: $hintDetent
-        )
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
     }
 }

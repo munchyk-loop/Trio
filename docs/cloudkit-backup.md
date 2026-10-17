@@ -5,6 +5,17 @@ Backups include therapy and algorithm settings, schedules, saved presets,
 app and alert configuration, and Dynamic ISF historical TDD summaries.
 Settings can be restored during onboarding or from Backup & Restore.
 
+Settings redesign snapshots use schema 6. They also include the personal
+profile, independent Slow/Fast Absorption ratios, glucose-alert profiles and
+their schedules, and system-alert preferences. Temporary alert snoozes and the
+currently active location are excluded. Switching profiles automatically does
+not create a configuration change for daily backup comparisons.
+
+Existing alert settings are not migrated into the redesigned settings.
+Users configure alerts from fresh defaults. Restoring a backup that predates
+alert profiles also starts alert setup from defaults; saved profiles from the
+redesigned settings can be restored normally.
+
 ## Backup management
 
 - Create a named iCloud backup with Back Up Now.

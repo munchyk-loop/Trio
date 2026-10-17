@@ -16,6 +16,17 @@ struct BackupSettingsNode: Identifiable {
         builder.addFields(backup.configuration.settings, source: "trioSettings")
         builder.addFields(backup.configuration.preferences, source: "preferences")
         builder.addFields(backup.configuration.pumpSettings, source: "pumpSettings")
+        if let profile = backup.configuration.settings.userProfile {
+            builder.addEncoded(profile, title: "Personal Information", path: ["Profile"])
+        }
+        for (title, value) in [
+            ("Slow Absorption", backup.configuration.settings.slowAbsorptionDeliveryRatio),
+            ("Fast Absorption", backup.configuration.settings.fastAbsorptionDeliveryRatio)
+        ] {
+            if let value {
+                builder.add(.init(id: title, title: title, value: format(value * 100) + " %"), path: ["Algorithm", "Insulin Dosing"])
+            }
+        }
         builder.addSchedules()
         builder.addEncoded(backup.configuration.presets.overrides, title: "Overrides", path: ["Presets"])
         builder.addEncoded(backup.configuration.presets.tempTargets, title: "Temporary Targets", path: ["Presets"])
@@ -35,6 +46,12 @@ struct BackupSettingsNode: Identifiable {
             builder.addEncoded(app.glucoseAlerts, title: "Glucose Alarms", path: ["Notifications"])
             builder.addAlertPreferences(app.glucoseAlertConfiguration)
             builder.addEncoded(app.deviceAlertConfigurations, title: "Device Alarms", path: ["Notifications"])
+            if let profiles = app.alertProfiles {
+                builder.addEncoded(profiles, title: "Alert Profiles", path: ["Notifications"])
+            }
+            if let system = app.systemAlerts {
+                builder.addEncoded(system, title: "System Alerts", path: ["Notifications"])
+            }
         }
         builder.addDynamicISFSetting()
         builder.addHistory(backup.dynamicISFHistory)
@@ -460,6 +477,9 @@ struct BackupSettingsNode: Identifiable {
         "high"
     ]
     private static let excludedFields: Set<String> = [
+        "userProfile",
+        "slowAbsorptionDeliveryRatio",
+        "fastAbsorptionDeliveryRatio",
         "dosingMode",
         "useNewFormula",
         "sigmoid",
@@ -670,9 +690,11 @@ struct BackupSettingsNode: Identifiable {
 
         private static func insert(_ node: BackupSettingsNode, into nodes: inout [BackupSettingsNode], path: ArraySlice<String>) {
             guard let first = path.first else {
-                if let index = nodes.firstIndex(where: { $0.id == node.id }) {
-                    nodes[index].children.append(contentsOf: node.children)
-                    if nodes[index].children.isEmpty { nodes[index].value = node.value }
+                if let index = nodes.firstIndex(where: { $0.id == node.id || $0.title == node.title }) {
+                    var merged = node
+                    merged.children = nodes[index].children + node.children
+                    if !merged.children.isEmpty { merged.value = nil }
+                    nodes[index] = merged
                 } else { nodes.append(node) }
                 return
             }

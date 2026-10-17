@@ -41,19 +41,20 @@ struct TrioCloudBackupConfigurationView: View {
                 miniHint: automaticDescription,
                 verboseHint: VStack(alignment: .leading, spacing: 10) {
                     Text(automaticDescription)
-                    Text("Checks run while Trio is running or the next time you open it. Unchanged settings do not create another backup.")
+                    Text(
+                        "Checks run while Trio is running or the next time you open it. Unchanged settings do not create another backup."
+                    )
                     Text("Dynamic ISF history is included in backups, but new history alone does not trigger a backup.")
                 },
                 headerText: String(localized: "Automatic Backup")
-            ).listRowBackground(Color.chart)
+            )
             Section("Backup Retention") {
                 retentionRow
-            }.listRowBackground(Color.chart)
-            if pending > 0 { Text("\(pending) backup operation(s) pending.").listRowBackground(Color.chart) }
-            if let error { Text(error).foregroundStyle(.secondary).listRowBackground(Color.chart) }
+            }
+            if pending > 0 { Text("\(pending) backup operation(s) pending.") }
+            if let error { Text(error).foregroundStyle(.secondary) }
         }
-        .scrollContentBackground(.hidden)
-        .background(appState.trioBackgroundColor(for: colorScheme))
+
         .listSectionSpacing(sectionSpacing)
         .navigationTitle("Configuration")
         .navigationBarTitleDisplayMode(.inline)
@@ -106,7 +107,11 @@ struct TrioCloudBackupConfigurationView: View {
         }.padding(.vertical)
     }
 
-    private func retentionPicker(_ title: LocalizedStringKey, selection: Binding<Int>, origin: TrioSettingsBackup.Origin) -> some View {
+    private func retentionPicker(
+        _ title: LocalizedStringKey,
+        selection: Binding<Int>,
+        origin: TrioSettingsBackup.Origin
+    ) -> some View {
         Picker(title, selection: selection) {
             ForEach(TrioCloudBackupCoordinator.retentionChoices, id: \.self) { count in Text("\(count)").tag(count) }
         }

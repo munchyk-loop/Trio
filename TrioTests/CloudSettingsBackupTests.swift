@@ -63,6 +63,69 @@ import Testing
         #expect(decoded.name == "Baseline")
     }
 
+    @Test("Schema 5 backups remain readable without the new settings fields") func schema5Compatibility() throws {
+        let legacy = try makeBackup(validConfiguration(), schemaVersion: 5)
+        let decoded = try TrioSettingsBackup.decode(JSONEncoder().encode(legacy))
+        #expect(decoded.schemaVersion == TrioSettingsBackup.currentSchema)
+        #expect(decoded.id == legacy.id)
+        #expect(decoded.configuration.settings.userProfile == nil)
+        #expect(decoded.configuration.settings.slowAbsorptionDeliveryRatio == nil)
+    }
+
+    @Test("Restoring a pre-redesign backup starts alert setup from scratch") func oldBackupStartsFreshAlerts() throws {
+        var old = GlucoseAlert(type: .low)
+        old.thresholdMgDL = 65
+        old.activeOption = .night
+        let original = TrioSettingsBackup.AppConfiguration(
+            appearance: .dark, liveActivityOrder: nil, glucoseAlerts: [old],
+            glucoseAlertConfiguration: .init(forceTrioAlertsWhenCGMProvidesOwn: true),
+            deviceAlertConfigurations: []
+        )
+        let restored = original.alertsForRestore()
+        #expect(restored.appearance == .dark)
+        #expect(restored.glucoseAlerts.first { $0.type == .low }?.thresholdMgDL == GlucoseAlertType.low.defaultThresholdMgDL)
+        #expect(restored.alertProfiles?.count == 1)
+        #expect(restored.alertProfiles?.first?.isFallback == true)
+        #expect(!restored.glucoseAlertConfiguration.forceTrioAlertsWhenCGMProvidesOwn)
+        #expect(restored.deviceAlertConfigurations.count == DeviceAlertSeverity.allCases.count)
+    }
+
+    @Test("Profile and alert schedules round trip without temporary snoozes") func redesignConfigurationRoundTrip() throws {
+        var configuration = validConfiguration()
+        configuration.settings.userProfile = .init(name: "Example", heightCM: 170, weightKG: 70)
+        configuration.settings.slowAbsorptionDeliveryRatio = 0.6
+        configuration.settings.fastAbsorptionDeliveryRatio = 1.1
+        var low = GlucoseAlert(type: .low)
+        low.delivery = .critical
+        low.soundMode = .matchPhone
+        low.snoozeMinutes = 20
+        low.snoozedUntil = Date().addingTimeInterval(600)
+        let fallback = SettingsAlertProfile(name: "Default", isFallback: true, alerts: [GlucoseAlert(type: .urgentLow), low])
+        let night = SettingsAlertProfile(name: "Night", schedule: .init(kind: .time, startMinute: 1320, endMinute: 420), alerts: fallback.alerts)
+        configuration.appConfiguration = .init(
+            appearance: .systemDefault, liveActivityOrder: nil,
+            glucoseAlerts: fallback.alerts, glucoseAlertConfiguration: .init(), deviceAlertConfigurations: [],
+            alertProfiles: [night, fallback], systemAlerts: .init(algorithm: false)
+        )
+        let clean = try TrioSettingsBackup.normalized(configuration)
+        let decoded = try TrioSettingsBackup.decode(JSONEncoder().encode(makeBackup(clean)))
+        #expect(decoded.configuration.settings.userProfile?.name == "Example")
+        #expect(decoded.configuration.settings.slowAbsorptionDeliveryRatio == 0.6)
+        let restored = try #require(decoded.configuration.appConfiguration?.alertProfiles)
+        #expect(restored.first?.schedule.startMinute == 1320)
+        #expect(restored.last?.alerts.last?.snoozedUntil == nil)
+        #expect(restored.last?.alerts.last?.snoozeMinutes == 20)
+        #expect(restored.last?.alerts.last?.soundMode == .matchPhone)
+        #expect(decoded.configuration.appConfiguration?.systemAlerts?.algorithm == false)
+        var regenerated = clean
+        regenerated.appConfiguration?.alertProfiles?[0].id = UUID()
+        regenerated.appConfiguration?.alertProfiles?[0].alerts[0].id = UUID()
+        #expect(try TrioSettingsBackup.fingerprint(for: clean) == TrioSettingsBackup.fingerprint(for: regenerated))
+        var invalid = clean
+        invalid.appConfiguration?.alertProfiles?[0].schedule.startMinute = 1440
+        #expect(throws: BackupError.self) { _ = try makeBackup(invalid).validated() }
+    }
+
     @Test("New backups omit dosing mode and preserve strict validation of the remaining settings")
     func portableDosingMode() throws {
         var closed = validConfiguration()
@@ -381,20 +444,17 @@ import Testing
         #expect(!text.contains("sharedSecret"))
     }
 
-    @Test("Rollback reload retains the alert stores' existing migration and baseline rules") func alertStoreRollbackReload() throws {
+    @Test("Rollback reload restores saved alert configuration exactly") func alertStoreRollbackReload() throws {
         let defaults = isolatedDefaults()
         let glucose = GlucoseAlertsStore(defaults: defaults)
         let low = GlucoseAlert(type: .low)
-        try defaults.set(JSONEncoder().encode([low]), forKey: "trio.glucoseAlerts.v1")
+        try defaults.set(JSONEncoder().encode([low]), forKey: GlucoseAlertsStore.alertsStorageKey)
         glucose.reloadSavedConfiguration()
-        #expect(Set(glucose.alerts.map(\.type)) == Set(GlucoseAlertType.allCases))
-        #expect(glucose.alerts.contains(where: { $0.id == low.id }))
+        #expect(glucose.alerts == [low])
         let device = DeviceAlertsStore(defaults: defaults)
-        try defaults.set(JSONEncoder().encode([DeviceAlertSeverityConfig]()), forKey: "trio.deviceAlertSeverityConfigs.v1")
+        try defaults.set(JSONEncoder().encode([DeviceAlertSeverityConfig]()), forKey: DeviceAlertsStore.configsStorageKey)
         device.reloadSavedConfiguration()
-        #expect(DeviceAlertSeverity.allCases.allSatisfy { severity in
-            device.configs.contains(where: { $0.severity == severity && $0.activeOption == .always })
-        })
+        #expect(device.configs.isEmpty)
     }
 
     @Test("Default alert row identities do not create redundant backups across launches") func alertIdentityNormalization() throws {

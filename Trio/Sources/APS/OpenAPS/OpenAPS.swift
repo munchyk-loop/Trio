@@ -570,7 +570,7 @@ final class OpenAPS {
             let carbRatios = try JSONBridge.carbRatios(from: carbRatios)
             let tempTargets = try JSONBridge.tempTargets(from: tempTargets)
 
-            let pumpProfile = try ProfileGenerator.generate(
+            var pumpProfile = try ProfileGenerator.generate(
                 pumpSettings: pumpSettings,
                 bgTargets: bgTargets,
                 basalProfile: basalProfile,
@@ -581,7 +581,8 @@ final class OpenAPS {
                 clock: clock
             )
 
-            let profile = try ProfileGenerator.generate(
+            pumpProfile.applyTargetOnlyTemporaryTarget()
+            var profile = try ProfileGenerator.generate(
                 pumpSettings: pumpSettings,
                 bgTargets: bgTargets,
                 basalProfile: basalProfile,
@@ -592,6 +593,7 @@ final class OpenAPS {
                 clock: clock
             )
 
+            profile.applyTargetOnlyTemporaryTarget()
             // Save the profiles
             await storage.saveAsync(pumpProfile, as: Settings.pumpProfile)
             await storage.saveAsync(profile, as: Settings.profile)

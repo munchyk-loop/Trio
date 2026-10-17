@@ -123,7 +123,7 @@ private struct TonePickerRow: View {
 /// Plays bundled alarm `.caf` files for in-picker auditioning. Mixable
 /// `.playback` session so it ducks other audio without taking it over.
 /// Not the critical-alert player — this one obeys the silent switch.
-@MainActor private final class SoundPreviewPlayer: ObservableObject {
+@MainActor final class SoundPreviewPlayer: ObservableObject {
     @Published private(set) var playing: String?
     private var player: AVAudioPlayer?
 

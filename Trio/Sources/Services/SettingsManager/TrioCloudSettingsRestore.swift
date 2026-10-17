@@ -182,6 +182,7 @@ enum TrioCloudSettingsRestore {
         currentPreferences: Preferences
     ) -> TrioSettingsBackup.Configuration {
         var result = source
+        result.appConfiguration = source.appConfiguration?.alertsForRestore()
         result.settings.dosingMode = .open
         result.settings.cgm = currentSettings.cgm
         result.settings.cgmPluginIdentifier = currentSettings.cgmPluginIdentifier
@@ -194,6 +195,7 @@ enum TrioCloudSettingsRestore {
 
     static func onboardingConfiguration(_ source: TrioSettingsBackup.Configuration) throws -> TrioSettingsBackup.Configuration {
         var result = try TrioSettingsBackup.normalized(source)
+        result.appConfiguration = source.appConfiguration?.alertsForRestore()
         result.settings.dosingMode = .open
         return result
     }

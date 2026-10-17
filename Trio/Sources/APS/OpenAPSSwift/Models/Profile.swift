@@ -1,6 +1,7 @@
 import Foundation
 
 struct Profile: JSON {
+    var pauseAutoBolusOnSuddenRise: Bool? = nil
     // Kotlin-defined properties from AndroidAPS OapsProfile.kt
     // with defaults pulled from profile.js
     var dia: Decimal?
@@ -75,6 +76,7 @@ struct Profile: JSON {
     var supportedBasalRates: [Decimal] = []
 
     private enum CodingKeys: String, CodingKey {
+        case pauseAutoBolusOnSuddenRise
         case dia
         case min5mCarbImpact = "min_5m_carbimpact"
         case maxIob = "max_iob"
@@ -137,5 +139,15 @@ struct Profile: JSON {
         case isfProfile
         case bgTargets = "bg_targets"
         case carbRatios = "carb_ratios"
+    }
+}
+
+extension Profile {
+    mutating func applyTargetOnlyTemporaryTarget() {
+        guard temptargetSet == true else { return }
+        highTemptargetRaisesSensitivity = false
+        lowTemptargetLowersSensitivity = false
+        enableSMBWithTemptarget = false
+        allowSMBWithHighTemptarget = true
     }
 }

@@ -42,7 +42,7 @@ struct TrioCloudBackupDetailView: View {
                 LabeledContent("Name", value: entry.name ?? (entry.origin == .manual ? "Manual Backup" : "Automatic Backup"))
                 LabeledContent("Created", value: entry.createdAt.formatted(date: .abbreviated, time: .shortened))
                 LabeledContent("App Version", value: backup?.appVersion ?? entry.appVersion ?? "—")
-            }.listRowBackground(Color.chart)
+            }
             if let backup {
                 let nodes = BackupSettingsNode.make(from: backup)
                 Section("Contents") {
@@ -51,7 +51,7 @@ struct TrioCloudBackupDetailView: View {
                             BackupSettingsPreviewView(node: node)
                         } label: { Text(LocalizedStringKey(node.title)) }
                     }
-                }.listRowBackground(Color.chart)
+                }
                 Section {
                     VStack {
                         restoreButton
@@ -65,13 +65,12 @@ struct TrioCloudBackupDetailView: View {
                 Section {
                     if loading { ProgressView("Loading backup…") }
                     else { Text("This backup couldn’t be opened.").foregroundStyle(.secondary) }
-                }.listRowBackground(Color.chart)
+                }
             }
         }
         .disabled(restoring)
         .listSectionSpacing(sectionSpacing)
-        .scrollContentBackground(.hidden)
-        .background(appState.trioBackgroundColor(for: colorScheme))
+
         .navigationTitle("Backup Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -192,4 +191,3 @@ struct TrioCloudBackupDetailView: View {
         }
     }
 }
-

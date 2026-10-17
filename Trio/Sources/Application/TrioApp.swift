@@ -93,6 +93,7 @@ extension Notification.Name {
 
         // Start after Core Data and device services are ready; onboarding suppresses automatic backups.
         Task { @MainActor in
+            SettingsAlertProfilesStore.shared.start()
             TrioCloudBackupCoordinator.shared.start(resolver: resolver)
         }
 

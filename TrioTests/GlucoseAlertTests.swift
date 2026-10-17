@@ -83,68 +83,6 @@ import Testing
         #expect(!GlucoseAlertType.carbsRequired.isReadingDriven)
     }
 
-    // MARK: - Group B: decoder defaults
-
-    @Test("Omitted isEnabled defaults to true") func decodeOmittedIsEnabledDefaultsTrue() throws {
-        let json = """
-        {
-            "id": "11111111-1111-1111-1111-111111111111",
-            "type": "low",
-            "name": "Low Glucose",
-            "thresholdMgDL": 72
-        }
-        """
-        let decoded = try JSONDecoder().decode(GlucoseAlert.self, from: Data(json.utf8))
-        #expect(decoded.isEnabled == true)
-    }
-
-    @Test("urgentLow with isEnabled false decodes false but still evaluates") func decodeUrgentLowDisabledStillEvaluates() throws {
-        let json = """
-        {
-            "id": "22222222-2222-2222-2222-222222222222",
-            "type": "urgentLow",
-            "name": "Urgent Low Glucose",
-            "isEnabled": false,
-            "thresholdMgDL": 54
-        }
-        """
-        let decoded = try JSONDecoder().decode(GlucoseAlert.self, from: Data(json.utf8))
-        #expect(decoded.isEnabled == false)
-        #expect(decoded.shouldEvaluate == true)
-    }
-
-    @Test("high with optional fields omitted uses type defaults") func decodeHighDefaults() throws {
-        let json = """
-        {
-            "id": "33333333-3333-3333-3333-333333333333",
-            "type": "high",
-            "name": "High Glucose",
-            "thresholdMgDL": 270
-        }
-        """
-        let decoded = try JSONDecoder().decode(GlucoseAlert.self, from: Data(json.utf8))
-        #expect(decoded.soundFilename == GlucoseAlertType.high.defaultSoundFilename)
-        #expect(decoded.playsSound == true)
-        #expect(decoded.overridesSilenceAndDND == false)
-        #expect(decoded.activeOption == .always)
-        #expect(decoded.snoozedUntil == nil)
-        #expect(decoded.isEnabled == true)
-    }
-
-    @Test("urgentLow with overridesSilenceAndDND omitted uses type defaults") func decodeUrgentLowOverrideDefault() throws {
-        let json = """
-        {
-            "id": "44444444-4444-4444-4444-444444444444",
-            "type": "urgentLow",
-            "name": "Urgent Low Glucose",
-            "thresholdMgDL": 54
-        }
-        """
-        let decoded = try JSONDecoder().decode(GlucoseAlert.self, from: Data(json.utf8))
-        #expect(decoded.overridesSilenceAndDND == true)
-        #expect(decoded.soundFilename == GlucoseAlertType.urgentLow.defaultSoundFilename)
-    }
-
     // MARK: - Group C: round-trip
 
     @Test("Fully-populated value survives encode/decode round-trip") func roundTrip() throws {

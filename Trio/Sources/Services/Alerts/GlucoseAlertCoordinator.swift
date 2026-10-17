@@ -49,7 +49,8 @@ final class GlucoseAlertCoordinator: Injectable {
             return latestMgDL <= thresholdMgDL
         case .high:
             return latestMgDL >= thresholdMgDL
-        case .carbsRequired:
+        case .carbsRequired,
+             .fallingFast:
             return false
         }
     }
@@ -70,7 +71,8 @@ final class GlucoseAlertCoordinator: Injectable {
             return latestMgDL >= thresholdMgDL + recoveryMarginMgDL
         case .high:
             return latestMgDL <= thresholdMgDL - recoveryMarginMgDL
-        case .carbsRequired:
+        case .carbsRequired,
+             .fallingFast:
             return false
         }
     }
@@ -112,7 +114,14 @@ final class GlucoseAlertCoordinator: Injectable {
         alertsSnapshot = store.alerts
         configurationSnapshot = store.configuration
         store.$alerts
-            .sink { [weak self] new in self?.alertsSnapshot = new }
+            .sink { [weak self] new in
+                guard let self else { return }
+                let removed = alertsSnapshot.filter { old in !new.contains(where: { $0.id == old.id }) }
+                alertsSnapshot = new
+                evaluationQueue.async { [weak self] in
+                    for alarm in removed { self?.retractIfFiring(alarm) }
+                }
+            }
             .store(in: &subscriptions)
         store.$configuration
             .sink { [weak self] new in self?.configurationSnapshot = new }
@@ -132,18 +141,21 @@ final class GlucoseAlertCoordinator: Injectable {
     /// Two-stage: async-fetch the latest value (Core Data perform), then hop
     /// onto `evaluationQueue` to mutate `firingAlertIDs` safely.
     private func evaluateGlucoseAlarms() async {
+        await MainActor.run { SettingsAlertProfilesStore.shared.refresh() }
         guard !isInLaunchQuietWindow else { return }
         guard effectiveTrioAlertsEnabled else {
             retractReadingDrivenFiringAlarms()
             return
         }
         guard let latestValue = await fetchLatestReadingMgDL() else { return }
+        let fallRate = await fetchFallRate()
         let snapshot = alertsSnapshot
         let configuration = configurationSnapshot
         let now = Date()
         evaluationQueue.async { [weak self] in
             self?.applyReadingBasedEvaluation(
                 latestValue: latestValue,
+                fallRate: fallRate,
                 snapshot: snapshot,
                 configuration: configuration,
                 now: now
@@ -153,6 +165,7 @@ final class GlucoseAlertCoordinator: Injectable {
 
     private func applyReadingBasedEvaluation(
         latestValue: Decimal,
+        fallRate: Decimal?,
         snapshot: [GlucoseAlert],
         configuration: GlucoseAlertConfiguration,
         now: Date
@@ -165,6 +178,17 @@ final class GlucoseAlertCoordinator: Injectable {
         let sorted = snapshot.sorted { $0.type.priority < $1.type.priority }
         var urgentLowFiring = false
         for alarm in sorted where alarm.type.isReadingDriven {
+            if alarm.type == .fallingFast {
+                guard !urgentLowFiring, alarm.shouldEvaluate, !isAlarmSnoozed(alarm, at: now),
+                      isActive(alarm, at: now, configuration: configuration), let fallRate
+                else {
+                    retractIfFiring(alarm)
+                    continue
+                }
+                if fallRate >= alarm.thresholdMgDL { fireIfNeeded(alarm, valueMgDL: latestValue) }
+                else { retractIfFiring(alarm) }
+                continue
+            }
             if alarm.type == .low, urgentLowFiring {
                 retractIfFiring(alarm)
                 continue
@@ -303,13 +327,17 @@ final class GlucoseAlertCoordinator: Injectable {
             body: body,
             acknowledgeActionButtonLabel: String(localized: "OK")
         )
+        var metadata: Alert.Metadata = [:]
+        if let delivery = alarm.delivery { metadata["settings.delivery"] = .init(delivery.rawValue) }
+        if let mode = alarm.soundMode { metadata["settings.soundMode"] = .init(mode.rawValue) }
         let alert = Alert(
             identifier: alertID(for: alarm),
             foregroundContent: content,
             backgroundContent: content,
             trigger: .immediate,
             interruptionLevel: alarm.overridesSilenceAndDND ? .critical : .timeSensitive,
-            sound: alarm.playsSound ? .sound(name: alarm.soundFilename) : nil
+            sound: alarm.soundMode == .vibrateAlways ? .vibrate : alarm.playsSound ? .sound(name: alarm.soundFilename) : nil,
+            metadata: metadata.isEmpty ? nil : metadata
         )
         trioAlertManager.issueAlert(alert)
     }
@@ -352,6 +380,7 @@ final class GlucoseAlertCoordinator: Injectable {
         case .forecastedLow: typeSlug = "forecastedLow"
         case .high: typeSlug = "high"
         case .carbsRequired: typeSlug = "carbsRequired"
+        case .fallingFast: typeSlug = "fallingFast"
         }
         return Alert.Identifier(
             managerIdentifier: BaseTrioAlertManager.managerIdentifier,
@@ -380,6 +409,8 @@ final class GlucoseAlertCoordinator: Injectable {
                 format: String(localized: "Glucose %1$@."),
                 valueString, limitString
             )
+        case .fallingFast:
+            return String(localized: "Your glucose is falling quickly.") + " " + valueString
         case .carbsRequired:
             return String(
                 format: String(localized: "To prevent LOW required %d g of carbs"),
@@ -407,6 +438,31 @@ final class GlucoseAlertCoordinator: Injectable {
     /// the caller's thread, never lets a `GlucoseStored` managed object cross
     /// queue boundaries (would otherwise trip
     /// `_PFAssertSafeMultiThreadedAccess_impl`).
+    static func fallRate(latest: Decimal, previous: Decimal, elapsed: TimeInterval) -> Decimal? {
+        guard elapsed >= 60, elapsed <= 12 * 60, latest > 0, previous > 0 else { return nil }
+        return (previous - latest) / Decimal(elapsed / 60)
+    }
+
+    private func fetchFallRate() async -> Decimal? {
+        let context = CoreDataStack.shared.newTaskContext()
+        return await context.perform {
+            let request = GlucoseStored.fetchRequest()
+            request.predicate = NSPredicate(
+                format: "date >= %@",
+                Date().addingTimeInterval(-Self.readingFreshnessWindow) as NSDate
+            )
+            request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+            request.fetchLimit = 2
+            guard let readings = try? context.fetch(request), readings.count == 2,
+                  let latestDate = readings[0].date, let previousDate = readings[1].date else { return nil }
+            return Self.fallRate(
+                latest: Decimal(readings[0].glucose),
+                previous: Decimal(readings[1].glucose),
+                elapsed: latestDate.timeIntervalSince(previousDate)
+            )
+        }
+    }
+
     private func fetchLatestReadingMgDL() async -> Decimal? {
         let cutoff = Date().addingTimeInterval(-Self.readingFreshnessWindow)
         let predicate = NSPredicate(format: "date >= %@", cutoff as NSDate)

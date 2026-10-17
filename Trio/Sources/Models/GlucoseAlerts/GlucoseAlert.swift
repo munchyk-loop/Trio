@@ -21,12 +21,15 @@ struct GlucoseAlert: Identifiable, Codable, Equatable {
     var activeOption: ActiveOption
     /// Per-alarm snooze. Distinct from the global mute on `AlertMuter`.
     var snoozedUntil: Date?
+    var delivery: SettingsAlertDelivery?
+    var snoozeMinutes: Int?
+    var soundMode: SettingsAlertSoundMode?
 
     init(type: GlucoseAlertType) {
         id = UUID()
         self.type = type
         name = type.displayName
-        isEnabled = true
+        isEnabled = type != .fallingFast
         thresholdMgDL = type.defaultThresholdMgDL
         soundFilename = type.defaultSoundFilename
         playsSound = true
@@ -36,9 +39,7 @@ struct GlucoseAlert: Identifiable, Codable, Equatable {
     }
 
     /// Whether the coordinator should fire this alarm when a reading breaches.
-    /// Urgent-low is the safety floor — the editor hides the Enabled toggle so
-    /// the user can't accidentally turn it off, and stored `isEnabled = false`
-    /// from a prior install is ignored here.
+    /// Urgent-low is always active; its editor does not expose an Enabled toggle.
     var shouldEvaluate: Bool {
         type == .urgentLow || isEnabled
     }
@@ -56,22 +57,8 @@ struct GlucoseAlert: Identifiable, Codable, Equatable {
         case overridesSilenceAndDND
         case activeOption
         case snoozedUntil
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        type = try container.decode(GlucoseAlertType.self, forKey: .type)
-        name = try container.decode(String.self, forKey: .name)
-        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
-        thresholdMgDL = try container.decode(Decimal.self, forKey: .thresholdMgDL)
-        soundFilename = try container.decodeIfPresent(String.self, forKey: .soundFilename) ?? type.defaultSoundFilename
-        playsSound = try container.decodeIfPresent(Bool.self, forKey: .playsSound) ?? true
-        overridesSilenceAndDND = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .overridesSilenceAndDND
-        ) ?? type.defaultOverridesSilenceAndDND
-        activeOption = try container.decodeIfPresent(ActiveOption.self, forKey: .activeOption) ?? .always
-        snoozedUntil = try container.decodeIfPresent(Date.self, forKey: .snoozedUntil)
+        case delivery
+        case snoozeMinutes
+        case soundMode
     }
 }

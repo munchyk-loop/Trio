@@ -3,7 +3,7 @@ import Testing
 
 @testable import Trio
 
-@Suite("Trio Alerts: GlucoseAlertsStore seed + backfill", .serialized) struct GlucoseAlertsStoreTests {
+@Suite("Trio Alerts: GlucoseAlertsStore persistence", .serialized) struct GlucoseAlertsStoreTests {
     private static func makeStore(seed: [GlucoseAlert]? = nil) -> GlucoseAlertsStore {
         let suiteName = "GlucoseAlertsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -26,31 +26,12 @@ import Testing
         #expect(store.alerts.count == GlucoseAlertType.allCases.count)
     }
 
-    @Test("Legacy load (no carbsRequired) backfills the new type") func legacyLoadBackfillsCarbsRequired() {
-        let legacy: [GlucoseAlert] = [
-            GlucoseAlert(type: .urgentLow),
-            GlucoseAlert(type: .low),
-            GlucoseAlert(type: .forecastedLow),
-            GlucoseAlert(type: .high)
-        ]
-        let store = Self.makeStore(seed: legacy)
-        let types = Set(store.alerts.map(\.type))
-        #expect(types.contains(.carbsRequired))
-        #expect(store.alerts.count == GlucoseAlertType.allCases.count)
-    }
-
-    @Test("Backfill preserves user customizations on existing entries") func backfillPreservesCustomizations() {
+    @Test("Saved alerts load exactly as configured") func savedAlertsUnchanged() {
         var custom = GlucoseAlert(type: .low)
         custom.thresholdMgDL = 65
-        custom.soundFilename = "custom_sound.caf"
         custom.isEnabled = false
         let store = Self.makeStore(seed: [custom])
-        let restored = store.alerts.first { $0.type == .low }!
-        #expect(restored.thresholdMgDL == 65)
-        #expect(restored.soundFilename == "custom_sound.caf")
-        #expect(restored.isEnabled == false)
-        // And new types still got appended.
-        #expect(store.alerts.contains { $0.type == .carbsRequired })
+        #expect(store.alerts == [custom])
     }
 
     @Test("Full load doesn't double up on existing types") func fullLoadNoDuplicates() {

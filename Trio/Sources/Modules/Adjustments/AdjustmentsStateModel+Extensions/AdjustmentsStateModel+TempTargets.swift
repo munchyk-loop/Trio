@@ -399,11 +399,8 @@ extension Adjustments.StateModel {
     // MARK: - Calculations
 
     /// Determines if sensitivity adjustment is enabled based on target.
-    func isAdjustSensEnabled(usingTarget initialTarget: Decimal? = nil) -> Bool {
-        let target = initialTarget ?? tempTargetTarget
-        if target < TempTargetCalculations.normalTarget, lowTTlowersSens && autosensMax > 1 { return true }
-        if target > TempTargetCalculations.normalTarget, highTTraisesSens || isExerciseModeActive { return true }
-        return false
+    func isAdjustSensEnabled(usingTarget _: Decimal? = nil) -> Bool {
+        false
     }
 
     /// Computes the low value for the slider based on the target.

@@ -14,6 +14,7 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
     /// alongside the other glucose alarms so the user has one place to
     /// configure schedule/sound/snooze for everything fired by Trio.
     case carbsRequired
+    case fallingFast
 
     var id: String { rawValue }
 
@@ -24,7 +25,8 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
     /// `carbsRequired` (driven by the determination's `carbsReq` field).
     var isReadingDriven: Bool {
         switch self {
-        case .high,
+        case .fallingFast,
+             .high,
              .low,
              .urgentLow:
             return true
@@ -52,6 +54,7 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
         case .forecastedLow: return String(localized: "Low Glucose Soon")
         case .high: return String(localized: "High Glucose")
         case .carbsRequired: return String(localized: "Carbs Required")
+        case .fallingFast: return String(localized: "Falling Fast")
         }
     }
 
@@ -62,6 +65,7 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
         case .forecastedLow: return String(localized: "Fires when glucose is forecasted to be low within the next 20 minutes.")
         case .high: return String(localized: "Fires when glucose rises to or above a high threshold.")
         case .carbsRequired: return String(localized: "Fires when oref recommends eating carbs to avoid a low.")
+        case .fallingFast: return String(localized: "Fires when recent glucose readings are falling at or above the configured rate.")
         }
     }
 
@@ -74,6 +78,7 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
         case .forecastedLow: return 72
         case .high: return 270
         case .carbsRequired: return 10
+        case .fallingFast: return 2
         }
     }
 
@@ -85,6 +90,7 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
         case .forecastedLow: return "bloom.caf"
         case .high: return "chime.caf"
         case .carbsRequired: return "bloop.caf"
+        case .fallingFast: return "bloom.caf"
         }
     }
 
@@ -95,6 +101,7 @@ enum GlucoseAlertType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .urgentLow: return true
         case .carbsRequired,
+             .fallingFast,
              .forecastedLow,
              .high,
              .low: return false
