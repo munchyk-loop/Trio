@@ -23,6 +23,9 @@ final class BaseSettingsManager: SettingsManager, Injectable {
 
     @SyncAccess var settings: TrioSettings {
         didSet {
+            var normalized = settings
+            Self.applySettingsFlowDefaults(to: &normalized)
+            _settings.wrappedValue = normalized
             if oldValue != settings {
                 saveSettings()
                 DispatchQueue.main.async {
@@ -36,6 +39,9 @@ final class BaseSettingsManager: SettingsManager, Injectable {
 
     @SyncAccess var preferences: Preferences {
         didSet {
+            var normalized = preferences
+            Self.applySettingsFlowDefaults(to: &normalized)
+            _preferences.wrappedValue = normalized
             if oldValue != preferences {
                 savePreferences()
                 DispatchQueue.main.async {
@@ -66,7 +72,32 @@ final class BaseSettingsManager: SettingsManager, Injectable {
                 ?? Preferences(from: OpenAPS.defaults(for: OpenAPS.Settings.preferences))
                 ?? Preferences()
 
+        var normalizedSettings = settings
+        var normalizedPreferences = preferences
+        Self.applySettingsFlowDefaults(to: &normalizedSettings)
+        Self.applySettingsFlowDefaults(to: &normalizedPreferences)
+        _settings.wrappedValue = normalizedSettings
+        _preferences.wrappedValue = normalizedPreferences
         injectServices(resolver)
+        saveSettings()
+        savePreferences()
+    }
+
+    // These controls were deliberately removed from the settings flow. Apply the
+    // backend defaults at load and write boundaries, including backup restores.
+    static func applySettingsFlowDefaults(to settings: inout TrioSettings) {
+        settings.displayPresets = true
+        settings.useCalendar = false
+        settings.showCobIobChart = true
+        settings.showCarbsRequiredBadge = true
+        settings.carbsRequiredThreshold = 10
+        settings.requireAdjustmentsConfirmation = false
+    }
+
+    static func applySettingsFlowDefaults(to preferences: inout Preferences) {
+        preferences.skipNeutralTemps = false
+        preferences.rewindResetsAutosens = true
+        preferences.suspendZerosIOB = true
     }
 
     var pumpSettings: PumpSettings {

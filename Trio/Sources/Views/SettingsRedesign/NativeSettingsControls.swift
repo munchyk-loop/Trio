@@ -1,6 +1,28 @@
 import SwiftUI
 import Swinject
 
+/// Use the same background and card color as the rest of Trio.
+struct SettingsBackground: ViewModifier {
+    @Environment(AppState.self) private var appState
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background(appState.trioBackgroundColor(for: colorScheme))
+    }
+}
+
+extension View {
+    func settingsBackground() -> some View { modifier(SettingsBackground()) }
+}
+
+enum SettingsValuePresentation {
+    case navigation
+    case menu
+    case wheel
+}
+
 struct SettingsHelpFooter: View {
     let title: String
     let text: String
@@ -22,24 +44,38 @@ struct SettingsHelpFooter: View {
             .accessibilityLabel(Text("More information about \(title)"))
         }
         .sheet(isPresented: $showingHelp) {
-            NavigationStack {
-                ScrollView {
-                    Text(LocalizedStringKey(detail ?? text))
+            SettingsHelpSheet(title: title, text: detail ?? text)
+        }
+    }
+}
+
+struct SettingsHelpSheet: View {
+    let title: String
+    let text: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(LocalizedStringKey(text))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
+                        .padding(.vertical, 8)
                 }
-                .navigationTitle(LocalizedStringKey(title))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button { showingHelp = false } label: { Image(systemName: "xmark") }
-                            .accessibilityLabel("Close")
-                    }
+                .listRowBackground(Color.chart)
+            }
+            .settingsBackground()
+            .navigationTitle(LocalizedStringKey(title))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close")
                 }
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
         }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
     }
 }
 
@@ -51,6 +87,9 @@ struct SettingsNumberRow: View {
     var suffix: String? = nil
     var includeOff = false
     var displayTransform: (Decimal) -> Decimal = { $0 }
+    var presentation: SettingsValuePresentation = .navigation
+    var description: String = ""
+    @State private var showingWheel = false
 
     private var values: [Decimal] {
         var values = PickerSettingsProvider.shared.generatePickerValues(from: spec, units: units)
@@ -92,21 +131,92 @@ struct SettingsNumberRow: View {
         return "\(formatter.string(from: number as NSDecimalNumber) ?? number.description) \(unit)"
     }
 
-    var body: some View {
-        NavigationLink {
-            Form {
-                Picker(LocalizedStringKey(title), selection: $value) {
-                    ForEach(values, id: \.self) { value in
-                        Text(formatted(value)).tag(value)
-                    }
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
+    @ViewBuilder var body: some View {
+        switch presentation {
+        case .navigation:
+            NavigationLink {
+                detailView
+            } label: {
+                LabeledContent(LocalizedStringKey(title)) { Text(formatted(value)) }
             }
-            .navigationTitle(LocalizedStringKey(title))
-            .navigationBarTitleDisplayMode(.inline)
-        } label: {
-            LabeledContent(LocalizedStringKey(title)) { Text(formatted(value)) }
+        case .menu:
+            picker.pickerStyle(.menu)
+        case .wheel:
+            Button { showingWheel = true } label: {
+                LabeledContent(LocalizedStringKey(title)) {
+                    Text(formatted(value)).foregroundStyle(Color.accentColor)
+                }
+                .foregroundStyle(Color.primary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .sheet(isPresented: $showingWheel) {
+                NavigationStack {
+                    wheelContent
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+            }
+        }
+    }
+
+    var detailView: some View {
+        Form {
+            Section {
+                SettingsNumberRow(
+                    title: title, value: $value, spec: spec, units: units, suffix: suffix,
+                    includeOff: includeOff, displayTransform: displayTransform, presentation: .wheel
+                )
+            } footer: {
+                Text(LocalizedStringKey(settingDescription))
+            }
+            .listRowBackground(Color.chart)
+        }
+        .settingsBackground()
+        .navigationTitle(LocalizedStringKey(title))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    var wheelContent: some View {
+        Form {
+            Section { picker.pickerStyle(.wheel).labelsHidden() }
+                .listRowBackground(Color.chart)
+        }
+        .settingsBackground()
+        .navigationTitle(LocalizedStringKey(title))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button { showingWheel = false } label: { Image(systemName: "checkmark") }
+                    .accessibilityLabel("Done")
+            }
+        }
+    }
+
+    private var settingDescription: String {
+        if !description.isEmpty { return description }
+        switch title {
+        case "Safety Threshold": return "Below this glucose threshold, Trio suspends automated insulin delivery to help prevent low glucose."
+        case "Basal Rate": return "Set the maximum basal delivery rate permitted by your pump."
+        case "Bolus": return "Set the maximum amount of insulin permitted in one bolus."
+        case "Insulin on Board (IOB)": return "Limit the active insulin Trio can add through automated dosing."
+        case "Auto Bolus": return "Limit an Auto Bolus to this many minutes of your scheduled basal insulin."
+        case "Auto Bolus - UAM": return "Limit Auto Boluses for unannounced meals to this many minutes of scheduled basal insulin."
+        case "ISF Strength Increase": return "Set how much Trio may increase your ISF strength relative to your therapy setting."
+        case "ISF Strength Decrease": return "Set how much Trio may decrease your ISF strength relative to your therapy setting."
+        case "Carb Entry": return "Set the maximum carbohydrate amount allowed in a single entry."
+        case "Carbs on Board (COB)": return "Set the maximum amount of active carbohydrates included in Trio's calculations."
+        case "Maximum Scheduled Basal Multiplier": return "Limit temporary basal delivery relative to the highest rate in your basal schedule."
+        case "Current Scheduled Basal Multiplier": return "Limit temporary basal delivery relative to the current rate in your basal schedule."
+        default: return "Choose the value for this setting."
+        }
+    }
+
+    private var picker: some View {
+        Picker(LocalizedStringKey(title), selection: $value) {
+            ForEach(values, id: \.self) { value in
+                Text(formatted(value)).tag(value)
+            }
         }
     }
 }
@@ -131,5 +241,28 @@ struct SettingsScreenDestination: View {
 
     var body: some View {
         resolver.resolve(Router.self)!.view(for: screen)
+    }
+}
+
+/// Reuse the device lifecycle and driver sheets while placing app-owned controls
+/// in the same page as the connected-device card.
+struct SettingsConnectedDeviceView: View {
+    let page: SettingsFlowPage
+    @ObservedObject var model: SettingsFlowModel
+
+    var body: some View {
+        if page == .cgm {
+            CGMSettings.RootView(
+                resolver: model.resolver, displayClose: false,
+                bluetoothManager: model.resolver.resolve(BluetoothStateManager.self)!,
+                settingsFlowModel: model
+            )
+        } else {
+            PumpConfig.RootView(
+                resolver: model.resolver, displayClose: false,
+                bluetoothManager: model.resolver.resolve(BluetoothStateManager.self)!,
+                settingsFlowModel: model
+            )
+        }
     }
 }

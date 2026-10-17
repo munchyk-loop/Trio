@@ -31,6 +31,7 @@ struct TrioCloudBackupView: View {
         ZStack {
             backupList
         }
+        .settingsBackground()
         .navigationTitle("Backup & Restore")
         .navigationBarTitleDisplayMode(.large)
         .onAppear { lastBackup = TrioCloudBackupCoordinator.shared.lastSuccessfulBackupDate }

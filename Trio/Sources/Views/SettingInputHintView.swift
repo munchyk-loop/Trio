@@ -9,10 +9,14 @@ struct SettingInputHintView<HintView: View>: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                DefinitionRow(term: hintLabel, definition: hintText, fontSize: .body)
-                    .padding()
+            Form {
+                Section {
+                    DefinitionRow(term: hintLabel, definition: hintText, fontSize: .body)
+                        .padding(.vertical, 8)
+                }
+                .listRowBackground(Color.chart)
             }
+            .settingsBackground()
             .navigationTitle(sheetTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

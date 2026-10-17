@@ -20,10 +20,13 @@ struct SettingsFlowPageView: View {
         Group {
             if page == .caregivers {
                 SettingsScreenDestination(screen: .remoteControlConfig, resolver: model.resolver)
+            } else if page == .cgm || page == .pump {
+                SettingsConnectedDeviceView(page: page, model: model)
             } else {
-                Form { content }
+                Form { content.listRowBackground(Color.chart) }.pickerStyle(.menu)
             }
         }
+        .settingsBackground()
         .navigationTitle(LocalizedStringKey(page.title))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showLogs) { ShareSheet(activityItems: logItems) }
@@ -53,7 +56,6 @@ struct SettingsFlowPageView: View {
         case .insulinDosing: insulinDosing
         case .advanced: advanced
         case .additionalSafety: additionalSafety
-        case .pumpAdvanced: pumpAdvanced
         case .notifications: notifications
         case .customize: customize
         case .graph: graph
@@ -76,9 +78,17 @@ struct SettingsFlowPageView: View {
 
     private func number(
         _ title: String, _ key: WritableKeyPath<Preferences, Decimal>, _ spec: PickerSetting,
-        suffix: String? = nil
+        suffix: String? = nil, presentation: SettingsValuePresentation = .navigation, description: String = ""
     ) -> some View {
-        SettingsNumberRow(title: title, value: model.preference(key), spec: spec, units: model.units, suffix: suffix)
+        SettingsNumberRow(
+            title: title,
+            value: model.preference(key),
+            spec: spec,
+            units: model.units,
+            suffix: suffix,
+            presentation: presentation,
+            description: description
+        )
     }
 
     private func settingNumber(
@@ -206,9 +216,8 @@ struct SettingsFlowPageView: View {
         }
     }
 
-    private var cgm: some View {
+    var cgm: some View {
         Group {
-            Section("Connected Device") { screen("CGM", .cgm) }
             Section {
                 Toggle("Smooth CGM Readings", isOn: model.setting(\.smoothGlucose))
             } header: { Text("CGM Reliability") } footer: {
@@ -226,7 +235,7 @@ struct SettingsFlowPageView: View {
                     SettingsNumberRow(
                         title: "Raise Target", value: model.preference(\.noisyCGMTargetMultiplier),
                         spec: specs.noisyCGMTargetMultiplier,
-                        suffix: "%", displayTransform: { ($0 - 1) * 100 }
+                        suffix: "%", displayTransform: { ($0 - 1) * 100 }, presentation: .wheel
                     )
                 }
             } footer: {
@@ -238,7 +247,7 @@ struct SettingsFlowPageView: View {
             Section {
                 Toggle("Sudden Rise → Pause AB", isOn: model.suddenRiseSafeguard)
                 if model.preferences.pauseAutoBolusOnSuddenRise ?? true {
-                    number("Rise Threshold", \.maxDeltaBGthreshold, specs.maxDeltaBGthreshold)
+                    number("Rise Threshold", \.maxDeltaBGthreshold, specs.maxDeltaBGthreshold, presentation: .wheel)
                 }
             } footer: {
                 help(
@@ -250,27 +259,40 @@ struct SettingsFlowPageView: View {
         }
     }
 
-    private var pump: some View {
+    var pump: some View {
         Group {
-            Section("Connected Device") { screen("Insulin Pump", .pumpConfig) }
-            Section("Insulin") { screen("Type & Concentration", .pumpConfig) }
             Section {
-                Toggle("Auto Un-Suspend Pump", isOn: model.preference(\.unsuspendIfNoTemp))
+                NavigationLink {
+                    Form {
+                        Section {
+                            Picker("Auto Un-Suspend Pump", selection: model.preference(\.unsuspendIfNoTemp)) {
+                                Text("Off").tag(false)
+                                Text("On").tag(true)
+                            }
+                            .pickerStyle(.menu)
+                        } footer: {
+                            help(
+                                "Auto Un-Suspend Pump",
+                                "Trio will automatically un-suspend your pump after a manual 0 U/hr temporary basal rate expires."
+                            )
+                        }
+                        .listRowBackground(Color.chart)
+                    }
+                    .settingsBackground()
+                    .navigationTitle("Auto Un-Suspend Pump")
+                    .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    LabeledContent(
+                        "Auto Un-Suspend Pump",
+                        value: model.preferences.unsuspendIfNoTemp ? String(localized: "On") : String(localized: "Off")
+                    )
+                }
             } header: { Text("Pump") } footer: {
                 help(
                     "Auto Un-Suspend Pump",
                     "Trio will automatically un-suspend your pump after a manual 0 U/hr temporary basal rate expires."
                 )
             }
-            Section { link(.pumpAdvanced) }
-        }
-    }
-
-    private var pumpAdvanced: some View {
-        Section {
-            Toggle("Skip Neutral Temporary Basal", isOn: model.preference(\.skipNeutralTemps))
-            Toggle("Rewind Resets Autosens", isOn: model.preference(\.rewindResetsAutosens))
-            Toggle("Suspension Resets IOB", isOn: model.preference(\.suspendZerosIOB))
         }
     }
 
@@ -340,8 +362,18 @@ struct SettingsFlowPageView: View {
     private var temporaryBasalLimits: some View {
         Form {
             Section {
-                number("Maximum Scheduled Basal Multiplier", \.maxDailySafetyMultiplier, specs.maxDailySafetyMultiplier)
-                number("Current Scheduled Basal Multiplier", \.currentBasalSafetyMultiplier, specs.currentBasalSafetyMultiplier)
+                number(
+                    "Maximum Scheduled Basal Multiplier",
+                    \.maxDailySafetyMultiplier,
+                    specs.maxDailySafetyMultiplier,
+                    presentation: .wheel
+                )
+                number(
+                    "Current Scheduled Basal Multiplier",
+                    \.currentBasalSafetyMultiplier,
+                    specs.currentBasalSafetyMultiplier,
+                    presentation: .wheel
+                )
             } footer: {
                 help(
                     "Temporary Basal Rate",
@@ -350,6 +382,7 @@ struct SettingsFlowPageView: View {
                 )
             }
         }
+        .settingsBackground()
         .navigationTitle("Temporary Basal Rate")
     }
 
@@ -377,9 +410,14 @@ struct SettingsFlowPageView: View {
             if model.preferences.useNewFormula {
                 Section {
                     if model.preferences.sigmoid {
-                        number("Adjustment Factor", \.adjustmentFactorSigmoid, specs.adjustmentFactorSigmoid)
+                        number(
+                            "Adjustment Factor",
+                            \.adjustmentFactorSigmoid,
+                            specs.adjustmentFactorSigmoid,
+                            presentation: .wheel
+                        )
                     } else {
-                        number("Adjustment Factor", \.adjustmentFactor, specs.adjustmentFactor)
+                        number("Adjustment Factor", \.adjustmentFactor, specs.adjustmentFactor, presentation: .wheel)
                     }
                 } footer: {
                     help(
@@ -443,14 +481,19 @@ struct SettingsFlowPageView: View {
                     Toggle("For 6 hrs After Carb Entry", isOn: model.preference(\.enableSMBAfterCarbs))
                     Toggle("When Glucose is Above", isOn: model.preference(\.enableSMB_high_bg))
                     if model.preferences.enableSMB_high_bg {
-                        number("Glucose Threshold", \.enableSMB_high_bg_target, specs.enableSMB_high_bg_target)
+                        number(
+                            "Glucose Threshold",
+                            \.enableSMB_high_bg_target,
+                            specs.enableSMB_high_bg_target,
+                            presentation: .wheel
+                        )
                     }
                 }
             } header: { Text("Auto Bolus") } footer: {
                 help("Auto Bolus", "Choose when Auto Boluses are allowed.")
             }
             Section {
-                number("Delivery Ratio", \.smbDeliveryRatio, specs.smbDeliveryRatio)
+                number("Delivery Ratio", \.smbDeliveryRatio, specs.smbDeliveryRatio, presentation: .wheel)
             } footer: {
                 help(
                     "Auto Bolus Delivery Ratio",
@@ -458,18 +501,23 @@ struct SettingsFlowPageView: View {
                 )
             }
             Section {
-                settingNumber("Delivery Ratio", \.overrideFactor, specs.overrideFactor)
+                SettingsNumberRow(
+                    title: "Delivery Ratio",
+                    value: model.setting(\.overrideFactor),
+                    spec: specs.overrideFactor,
+                    presentation: .wheel
+                )
                 SettingsNumberRow(
                     title: "Slow",
                     value: model.absorptionDeliveryRatio(fast: false),
                     spec: specs.overrideFactor,
-                    includeOff: true
+                    includeOff: true, presentation: .wheel
                 )
                 SettingsNumberRow(
                     title: "Fast",
                     value: model.absorptionDeliveryRatio(fast: true),
                     spec: specs.overrideFactor,
-                    includeOff: true
+                    includeOff: true, presentation: .wheel
                 )
             } header: { Text("Manual Bolus") } footer: {
                 help(
@@ -484,7 +532,7 @@ struct SettingsFlowPageView: View {
                         title: "Add Scheduled Basal Upfront",
                         value: model.setting(\.sweetMealFactor),
                         spec: specs.sweetMealFactor,
-                        includeOff: true
+                        includeOff: true, presentation: .wheel
                     )
                 } footer: {
                     help(
@@ -500,8 +548,13 @@ struct SettingsFlowPageView: View {
     private var advanced: some View {
         Group {
             Section {
-                Toggle("Custom Insulin Peak Time", isOn: model.preference(\.useCustomPeakTime))
-                if model.preferences.useCustomPeakTime { number("Insulin Peak Time", \.insulinPeakTime, specs.insulinPeakTime) }
+                Picker("Insulin Peak Time", selection: model.preference(\.useCustomPeakTime)) {
+                    Text("Default").tag(false)
+                    Text("Custom").tag(true)
+                }
+                if model.preferences.useCustomPeakTime {
+                    number("Peak Time", \.insulinPeakTime, specs.insulinPeakTime, presentation: .wheel)
+                }
             } header: { Text("Insulin") } footer: {
                 help(
                     "Insulin Peak Time",
@@ -509,17 +562,34 @@ struct SettingsFlowPageView: View {
                 )
             }
             Section {
-                SettingsNumberRow(title: "Duration of Insulin Action", value: model.insulinActionDuration, spec: specs.dia)
+                SettingsNumberRow(
+                    title: "Duration of Insulin Action",
+                    value: model.insulinActionDuration,
+                    spec: specs.dia,
+                    presentation: .wheel
+                )
             } footer: {
                 help(
                     "Duration of Insulin Action",
                     "The amount of time after insulin delivery for which Trio can consider the insulin to be active."
                 )
             }
-            Section { number("Auto Bolus Interval", \.smbInterval, specs.smbInterval) } footer: {
+            Section {
+                number(
+                    "Auto Bolus Interval",
+                    \.smbInterval,
+                    specs.smbInterval,
+                    description: "Choose the minimum time between Auto Boluses."
+                ) } footer: {
                 help("Auto Bolus Interval", "Choose the minimum time between Auto Boluses.")
             }
-            Section { number("Max Duration of Carb Absorption", \.maxMealAbsorptionTime, specs.maxMealAbsorptionTime) } header: {
+            Section {
+                number(
+                    "Max Duration of Carb Absorption",
+                    \.maxMealAbsorptionTime,
+                    specs.maxMealAbsorptionTime,
+                    presentation: .wheel
+                ) } header: {
                 Text("Carbs")
             } footer: {
                 help(
@@ -527,19 +597,35 @@ struct SettingsFlowPageView: View {
                     "The max amount of time for which Trio can consider a carb entry to be active."
                 )
             }
-            Section { number("Min Rate of Carb Absorption", \.min5mCarbimpact, specs.min5mCarbimpact) } footer: {
+            Section { SettingsNumberRow(
+                title: "Min Rate of Carb Absorption",
+                value: model.preference(\.min5mCarbimpact),
+                spec: specs.min5mCarbimpact,
+                units: model.units,
+                suffix: "\(model.units.rawValue)/5 min",
+                displayTransform: { model.units == .mmolL ? $0.asMmolL : $0 },
+                presentation: .wheel
+            )
+            } footer: {
                 help(
                     "Min Rate of Carb Absorption",
                     "The parameter used to calculate the minimum assumed rate of carb absorption when carb effects aren't clearly reflected in your glucose readings."
                 )
             }
-            Section { number("Carb Prediction Percentage", \.remainingCarbsFraction, specs.remainingCarbsFraction) } footer: {
+            Section {
+                number(
+                    "Carb Prediction Percentage",
+                    \.remainingCarbsFraction,
+                    specs.remainingCarbsFraction,
+                    presentation: .wheel
+                ) } footer: {
                 help(
                     "Carb Prediction Percentage",
                     "The maximum percentage of your original carb entry Trio can account for when predicting additional carb absorption."
                 )
             }
-            Section { number("Carb Prediction Limit", \.remainingCarbsCap, specs.remainingCarbsCap) } footer: {
+            Section { number("Carb Prediction Limit", \.remainingCarbsCap, specs.remainingCarbsCap, presentation: .wheel)
+            } footer: {
                 help(
                     "Carb Prediction Limit",
                     "The maximum amount of additional carb absorption Trio can include in its glucose predictions."
@@ -581,7 +667,6 @@ struct SettingsFlowPageView: View {
             }
             Section {
                 screen("Live Activity", .liveActivitySettings)
-                screen("Calendar Events", .calendarEventSettings)
             }
         }
     }
@@ -596,26 +681,44 @@ struct SettingsFlowPageView: View {
                     Text("Dark").tag(ColorSchemeOption.dark)
                 }
             }
-            Section("Home Screen") { link(.graph)
-                link(.statisticsBar) }
+            Section("Home Screen") {
+                link(.graph)
+                Picker("Statistics Bar", selection: model.setting(\.homeStatsPanelFace)) {
+                    ForEach(HomeStatsPanelFace.allCases) { Text($0.displayName).tag($0) }
+                }
+            }
             Section("Bolus Screen") {
-                Toggle("Display Meal Presets", isOn: model.setting(\.displayPresets))
                 screen("Quick-Pick Treatments", .quickPickTreatmentsConfig)
                 screen("Carbs", .mealSettings)
             }
-            Section { screen("Additional Display Settings", .userInterfaceSettings) }
         }
     }
 
     private var graph: some View {
         Group {
             Section("Display") {
-                Toggle("Horizontal Grid Lines", isOn: model.setting(\.yGridLines))
-                Toggle("Vertical Grid Lines", isOn: model.setting(\.xGridLines))
+                Picker("Grid Lines", selection: model.gridLines) {
+                    Text("None").tag(0)
+                    Text("Horizontal").tag(1)
+                    Text("Vertical").tag(2)
+                    Text("Horizontal & Vertical").tag(3)
+                }
             }
             Section {
-                settingNumber("Lower Limit", \.low, specs.low)
-                settingNumber("Upper Limit", \.high, specs.high)
+                SettingsNumberRow(
+                    title: "Lower Limit",
+                    value: model.setting(\.low),
+                    spec: specs.low,
+                    units: model.units,
+                    presentation: .wheel
+                )
+                SettingsNumberRow(
+                    title: "Upper Limit",
+                    value: model.setting(\.high),
+                    spec: specs.high,
+                    units: model.units,
+                    presentation: .wheel
+                )
                 Toggle("Range Graph Lines", isOn: model.setting(\.rulerMarks))
             } header: { Text("Glucose") } footer: {
                 help(
@@ -637,7 +740,6 @@ struct SettingsFlowPageView: View {
                 Picker("Bolus Label Threshold", selection: model.setting(\.bolusDisplayThreshold)) {
                     ForEach(BolusDisplayThreshold.allCases) { Text($0.displayName).tag($0) }
                 }
-                Toggle("IOB & COB Graph", isOn: model.setting(\.showCobIobChart))
             }
         }
     }

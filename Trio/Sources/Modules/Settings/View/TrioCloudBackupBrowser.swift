@@ -65,6 +65,8 @@ struct TrioCloudBackupBrowser: View {
                 }
                 .listSectionSpacing(sectionSpacing)
 
+                .settingsBackground()
+
                 .navigationTitle("View Backups")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { refreshButton } }

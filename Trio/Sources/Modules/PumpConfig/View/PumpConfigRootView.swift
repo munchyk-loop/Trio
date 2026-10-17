@@ -6,6 +6,7 @@ extension PumpConfig {
         let resolver: Resolver
         let displayClose: Bool
         let bluetoothManager: BluetoothStateManager
+        var settingsFlowModel: SettingsFlowModel? = nil
         @StateObject var state = StateModel()
         @State private var shouldDisplayHint: Bool = false
         @State var hintDetent = PresentationDetent.large
@@ -22,7 +23,7 @@ extension PumpConfig {
         var body: some View {
             List {
                 Section(
-                    header: Text("Pump Integration to Trio"),
+                    header: Text(settingsFlowModel == nil ? "Pump Integration to Trio" : "Connected Device"),
                     content: {
                         if bluetoothManager.bluetoothAuthorization != .authorized {
                             HStack {
@@ -80,10 +81,23 @@ extension PumpConfig {
                         }
                     }
                 ).listRowBackground(Color.chart)
+                if let model = settingsFlowModel {
+                    Section("Insulin") {
+                        LabeledContent(
+                            "Type",
+                            value: model.resolver.resolve(APSManager.self)?.pumpManager?.status.insulinType?
+                                .title ?? String(localized: "Not Set")
+                        )
+                    }
+                    .listRowBackground(Color.chart)
+                    SettingsFlowPageView(page: .pump, model: model).pump
+                        .listRowBackground(Color.chart)
+                }
             }
             .scrollContentBackground(.hidden).background(appState.trioBackgroundColor(for: colorScheme))
+            .pickerStyle(.menu)
             .onAppear(perform: configureView)
-            .navigationBarTitleDisplayMode(.automatic)
+            .navigationBarTitleDisplayMode(settingsFlowModel == nil ? .automatic : .inline)
             .navigationTitle("Insulin Pump")
             .sheet(isPresented: $state.setupPump) {
                 if let pumpManager = state.provider.apsManager.pumpManager {

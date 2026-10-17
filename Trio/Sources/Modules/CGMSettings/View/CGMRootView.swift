@@ -7,6 +7,7 @@ extension CGMSettings {
         let resolver: Resolver
         let displayClose: Bool
         let bluetoothManager: BluetoothStateManager
+        var settingsFlowModel: SettingsFlowModel? = nil
         @StateObject var state = StateModel()
         @State private var shouldDisplayHint: Bool = false
         @State var hintDetent = PresentationDetent.large
@@ -23,7 +24,7 @@ extension CGMSettings {
         var body: some View {
             List {
                 Section(
-                    header: Text("CGM Integration to Trio"),
+                    header: Text(settingsFlowModel == nil ? "CGM Integration to Trio" : "Connected Device"),
                     content: {
                         if bluetoothManager.bluetoothAuthorization != .authorized {
                             HStack {
@@ -92,57 +93,63 @@ extension CGMSettings {
                     }.listRowBackground(Color.chart)
                 }
 
-                SettingInputSection(
-                    decimalValue: $decimalPlaceholder,
-                    booleanValue: $state.smoothGlucose,
-                    shouldDisplayHint: $shouldDisplayHint,
-                    selectedVerboseHint: Binding(
-                        get: { selectedVerboseHint },
-                        set: {
-                            selectedVerboseHint = $0.map { AnyView($0) }
-                            hintLabel = String(localized: "Smooth Glucose Value")
-                        }
-                    ),
-                    units: state.units,
-                    type: .boolean,
-                    label: String(localized: "Smooth Glucose Value"),
-                    miniHint: String(localized: "Smooth CGM readings using exponential smoothing."),
-                    verboseHint: VStack(alignment: .leading, spacing: 10) {
-                        Text("Default: OFF").bold()
+                if let model = settingsFlowModel {
+                    SettingsFlowPageView(page: .cgm, model: model).cgm
+                        .listRowBackground(Color.chart)
+                } else {
+                    SettingInputSection(
+                        decimalValue: $decimalPlaceholder,
+                        booleanValue: $state.smoothGlucose,
+                        shouldDisplayHint: $shouldDisplayHint,
+                        selectedVerboseHint: Binding(
+                            get: { selectedVerboseHint },
+                            set: {
+                                selectedVerboseHint = $0.map { AnyView($0) }
+                                hintLabel = String(localized: "Smooth Glucose Value")
+                            }
+                        ),
+                        units: state.units,
+                        type: .boolean,
+                        label: String(localized: "Smooth Glucose Value"),
+                        miniHint: String(localized: "Smooth CGM readings using exponential smoothing."),
+                        verboseHint: VStack(alignment: .leading, spacing: 10) {
+                            Text("Default: OFF").bold()
 
-                        Text(
-                            "This feature smooths your CGM readings to reduce noise and make them easier to read. It is based on a method used in AndroidAPS (AAPS). It uses two approaches: one that reacts quickly to recent changes, and one that looks at longer trends. These are combined to give a balanced result."
-                        )
-
-                        Text(
-                            "Trio will always display values based on your actual (raw) CGM readings. Smoothing does not change your real values or alerts."
-                        )
-
-                        Text("When this feature is enabled:")
-
-                        VStack(alignment: .leading) {
                             Text(
-                                "• The main chart and treatment chart show a light gray trend line for the smoothed values. The glucose dots always show your original CGM readings."
+                                "This feature smooths your CGM readings to reduce noise and make them easier to read. It is based on a method used in AndroidAPS (AAPS). It uses two approaches: one that reacts quickly to recent changes, and one that looks at longer trends. These are combined to give a balanced result."
                             )
 
-                            Text("• In Trio history, you will see the smoothed value next to the original reading.")
+                            Text(
+                                "Trio will always display values based on your actual (raw) CGM readings. Smoothing does not change your real values or alerts."
+                            )
 
-                            Text("• When you long-press a chart, the pop-up will show both the original and smoothed values.")
+                            Text("When this feature is enabled:")
+
+                            VStack(alignment: .leading) {
+                                Text(
+                                    "• The main chart and treatment chart show a light gray trend line for the smoothed values. The glucose dots always show your original CGM readings."
+                                )
+
+                                Text("• In Trio history, you will see the smoothed value next to the original reading.")
+
+                                Text("• When you long-press a chart, the pop-up will show both the original and smoothed values.")
+                            }
+
+                            Text(
+                                "It can handle small gaps in data and ignores sensor error values. It needs 4 readings in a row, each arriving within 12 minutes of the one before it, to work properly. Only CGM readings are smoothed—manual entries are not changed."
+                            )
+
+                            Text(
+                                "This helps Trio make more stable dosing decisions by avoiding over-reactions to small or short-term changes. Important trends are kept, while unreliable fluctuations are filtered out."
+                            )
                         }
-
-                        Text(
-                            "It can handle small gaps in data and ignores sensor error values. It needs 4 readings in a row, each arriving within 12 minutes of the one before it, to work properly. Only CGM readings are smoothed—manual entries are not changed."
-                        )
-
-                        Text(
-                            "This helps Trio make more stable dosing decisions by avoiding over-reactions to small or short-term changes. Important trends are kept, while unreliable fluctuations are filtered out."
-                        )
-                    }
-                )
+                    )
+                }
             }
             .scrollContentBackground(.hidden).background(appState.trioBackgroundColor(for: colorScheme))
+            .pickerStyle(.menu)
             .onAppear(perform: configureView)
-            .navigationBarTitleDisplayMode(.automatic)
+            .navigationBarTitleDisplayMode(settingsFlowModel == nil ? .automatic : .inline)
             .navigationTitle("CGM")
             .sheet(isPresented: $state.shouldDisplayCGMSetupSheet) {
                 switch state.cgmCurrent.type {

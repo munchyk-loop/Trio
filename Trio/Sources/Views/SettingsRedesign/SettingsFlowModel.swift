@@ -86,6 +86,16 @@ final class SettingsFlowModel: ObservableObject, SettingsObserver, PreferencesOb
         })
     }
 
+    var gridLines: Binding<Int> {
+        Binding(get: { (self.settings.yGridLines ? 1 : 0) + (self.settings.xGridLines ? 2 : 0) }, set: { value in
+            var updated = self.manager.settings
+            updated.yGridLines = value & 1 != 0
+            updated.xGridLines = value & 2 != 0
+            self.manager.settings = updated
+            self.settings = updated
+        })
+    }
+
     var units: GlucoseUnits { settings.units }
     func absorptionDeliveryRatio(fast: Bool) -> Binding<Decimal> {
         Binding(get: {
@@ -192,7 +202,6 @@ enum SettingsFlowPage: String, CaseIterable, Identifiable {
     case insulinDosing
     case advanced
     case additionalSafety
-    case pumpAdvanced
     case notifications
     case customize
     case graph
@@ -219,7 +228,6 @@ enum SettingsFlowPage: String, CaseIterable, Identifiable {
         case .insulinDosing: return "Insulin Dosing"
         case .advanced: return "Advanced"
         case .additionalSafety: return "Additional Configuration"
-        case .pumpAdvanced: return "Pump Configuration"
         case .notifications: return "Notifications"
         case .customize: return "Customize"
         case .graph: return "Graph"

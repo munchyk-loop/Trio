@@ -24,12 +24,41 @@ import UIKit
         }
         screens += [
             ("watch-destination", AnyView(SettingsScreenDestination(screen: .watch, resolver: TrioApp.resolver))),
-            ("search-results", AnyView(List { SettingsFlowSearchResults(query: "noisy cgm", model: model) }))
+            (
+                "search-results",
+                AnyView(List { SettingsFlowSearchResults(query: "noisy cgm", model: model) }.settingsBackground())
+            ),
+            (
+                "help-card",
+                AnyView(SettingsHelpSheet(
+                    title: "Smooth CGM Readings",
+                    text: "Smooth your CGM readings to reduce erratic jumps and better reflect natural glucose trends."
+                ))
+            )
+        ]
+        screens += [
+            (
+                "number-detail",
+                AnyView(SettingsNumberRow(
+                    title: "Insulin on Board (IOB)",
+                    value: .constant(5),
+                    spec: PickerSettingsProvider.shared.settings.maxIOB
+                ).detailView)
+            ),
+            (
+                "number-wheel",
+                AnyView(SettingsNumberRow(
+                    title: "Duration of Insulin Action",
+                    value: .constant(10),
+                    spec: PickerSettingsProvider.shared.settings.dia
+                ).wheelContent)
+            )
         ]
         let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SettingsReview", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for (name, screen) in screens {
+            window.overrideUserInterfaceStyle = .dark
             let controller = UIHostingController(rootView: NavigationStack { screen }
                 .environment(AppState())
                 .environment(SettingsSearchHighlight()))
@@ -42,6 +71,13 @@ import UIKit
                 window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
             }
             try #require(image.pngData()).write(to: directory.appendingPathComponent(name + ".png"))
+            if name == "settings" || name == "help-card" {
+                window.overrideUserInterfaceStyle = .light
+                try await Task.sleep(for: .milliseconds(100))
+                controller.view.layoutIfNeeded()
+                let light = renderer.image { _ in window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) }
+                try #require(light.pngData()).write(to: directory.appendingPathComponent(name + "-light.png"))
+            }
         }
     }
 
@@ -50,6 +86,71 @@ import UIKit
         // Storing the entire picker catalogue here caused a device stack overflow.
         #expect(MemoryLayout<SettingsFlowPageView>.stride < 1024)
         #expect(MemoryLayout<SettingsScreenDestination>.stride < 256)
+    }
+
+    @Test("Excluded controls cannot return through search") func excludedSearch() {
+        for query in [
+            "show IOB COB",
+            "rewind resets",
+            "skip neutral",
+            "suspension resets",
+            "additional display",
+            "calendar",
+            "display meal presets"
+        ] {
+            #expect(SettingsFlowSearchEntry.matching(query).isEmpty)
+        }
+    }
+
+    @Test("Removed settings use backend defaults without changing therapy values") func backendDefaults() {
+        var settings = TrioSettings()
+        settings.displayPresets = false
+        settings.useCalendar = true
+        settings.showCobIobChart = false
+        settings.showCarbsRequiredBadge = false
+        settings.carbsRequiredThreshold = 99
+        settings.requireAdjustmentsConfirmation = true
+        settings.overrideFactor = 0.65
+        BaseSettingsManager.applySettingsFlowDefaults(to: &settings)
+        #expect(settings.displayPresets)
+        #expect(!settings.useCalendar)
+        #expect(settings.showCobIobChart)
+        #expect(settings.showCarbsRequiredBadge)
+        #expect(settings.carbsRequiredThreshold == 10)
+        #expect(!settings.requireAdjustmentsConfirmation)
+        #expect(settings.overrideFactor == 0.65)
+
+        var preferences = Preferences()
+        preferences.skipNeutralTemps = true
+        preferences.rewindResetsAutosens = false
+        preferences.suspendZerosIOB = false
+        preferences.maxIOB = 7
+        BaseSettingsManager.applySettingsFlowDefaults(to: &preferences)
+        #expect(!preferences.skipNeutralTemps)
+        #expect(preferences.rewindResetsAutosens)
+        #expect(preferences.suspendZerosIOB)
+        #expect(preferences.maxIOB == 7)
+    }
+
+    @Test("Writing removed settings normalizes them without reentering observers")
+    @MainActor func managerDefaultWrite() {
+        let manager = TrioApp.resolver.resolve(SettingsManager.self)!
+        let originalSettings = manager.settings
+        let originalPreferences = manager.preferences
+        defer {
+            manager.settings = originalSettings
+            manager.preferences = originalPreferences
+        }
+        var settings = originalSettings
+        settings.displayPresets = false
+        settings.useCalendar = true
+        manager.settings = settings
+        #expect(manager.settings.displayPresets)
+        #expect(!manager.settings.useCalendar)
+        var preferences = originalPreferences
+        preferences.skipNeutralTemps = true
+        manager.preferences = preferences
+        #expect(!manager.preferences.skipNeutralTemps)
     }
 
     private var calendar: Calendar {

@@ -56,6 +56,7 @@ struct TrioCloudBackupConfigurationView: View {
         }
 
         .listSectionSpacing(sectionSpacing)
+        .settingsBackground()
         .navigationTitle("Configuration")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: automatic) { _, value in TrioCloudBackupCoordinator.shared.automaticEnabled = value }

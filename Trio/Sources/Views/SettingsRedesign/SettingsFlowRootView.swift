@@ -8,6 +8,7 @@ struct SettingsFlowRootView: View {
     @State private var searchQuery = ""
     @State private var searchPresented = false
     @State private var showingModes = false
+    @State private var searchDestination: SettingsFlowSearchEntry?
     @State private var knownVersionIssues = false
     @State private var availableVersion: String?
     @ObservedObject private var releaseNotes = ReleaseNotesService.shared
@@ -20,14 +21,31 @@ struct SettingsFlowRootView: View {
 
     var body: some View {
         List {
-            if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                settingsSections
+            if !searchPresented {
+                settingsSections.listRowBackground(Color.chart)
             } else {
-                SettingsFlowSearchResults(query: searchQuery, model: model)
+                SettingsFlowSearchResults(query: searchQuery, model: model) { entry in
+                    searchDestination = entry
+                    searchPresented = false
+                    searchQuery = ""
+                }
             }
         }
+        .modifier(SettingsSearchLifecycle(isPresented: $searchPresented, query: $searchQuery))
         .listStyle(.insetGrouped)
-        .navigationTitle("Settings")
+        .settingsBackground()
+        .navigationTitle(searchPresented ? "" : "Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $searchDestination) { entry in
+            SettingsFlowPageView(page: entry.page, model: model)
+        }
+        .onChange(of: searchPresented) { _, presented in
+            if !presented { searchQuery = "" }
+        }
+        .onDisappear {
+            searchPresented = false
+            searchQuery = ""
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showingModes = true } label: {
@@ -69,6 +87,7 @@ struct SettingsFlowRootView: View {
                         }
                     }
                 }
+                .settingsBackground()
                 .navigationTitle("Dosing Mode")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -168,12 +187,12 @@ struct SettingsFlowRootView: View {
     }
 }
 
-struct SettingsFlowSearchEntry: Identifiable {
+struct SettingsFlowSearchEntry: Identifiable, Hashable {
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let page: SettingsFlowPage
     let label: String
     var aliases = ""
-    var legacyScreen: Screen? = nil
-    var context: String? = nil
     var id: String { page.rawValue + "." + label }
 
     private static let navigationEntries: [SettingsFlowSearchEntry] = [
@@ -184,11 +203,6 @@ struct SettingsFlowSearchEntry: Identifiable {
         .init(page: .cgm, label: "Erratic CGM → Raise Target", aliases: "Noisy CGM Target Increase Multiplier"),
         .init(page: .cgm, label: "Sudden Rise → Pause AB", aliases: "Max Allowed Glucose Rise for SMB Rise Threshold"),
         .init(page: .pump, label: "Auto Un-Suspend Pump", aliases: "Unsuspend If No Temp"),
-        .init(
-            page: .pumpAdvanced,
-            label: "Pump Configuration",
-            aliases: "Rewind Resets Autosens Skip Neutral Temps Suspension Resets IOB"
-        ),
         .init(page: .therapy, label: "Therapy", aliases: "Basal Rates Carb Ratios Insulin Sensitivities ISF Targets"),
         .init(
             page: .safetyLimits,
@@ -214,76 +228,99 @@ struct SettingsFlowSearchEntry: Identifiable {
         .init(
             page: .notifications,
             label: "Notifications",
-            aliases: "System Glucose Alerts Alarms Profiles Time Location Schedule Live Activity Calendar"
+            aliases: "System Glucose Alerts Alarms Profiles Time Location Schedule Live Activity"
         ),
         .init(page: .graph, label: "Graph", aliases: "Grid Lines Range Color Style Forecast Bolus Label Threshold"),
         .init(page: .statisticsBar, label: "Statistics Bar", aliases: "Home Stats Panel"),
-        .init(page: .customize, label: "Customize", aliases: "Appearance Icon Quick Pick Presets Carbs"),
+        .init(page: .customize, label: "Customize", aliases: "Appearance Icon Quick Pick Carbs"),
         .init(page: .services, label: "Services", aliases: "Apple Health Nightscout Tidepool Shortcuts"),
         .init(page: .caregivers, label: "Caregivers", aliases: "Remote Control"),
         .init(page: .support, label: "Support", aliases: "Analytics Diagnostics Logs Bug Help Community"),
         .init(page: .about, label: "About", aliases: "Version Build Branch Components")
     ]
 
+    // Search only the supported flow. Indexing every legacy setting reintroduced
+    // controls deliberately removed from the redesign through search results.
     static var all: [Self] {
-        let renamed = [
-            "Enable SMB Always": "Always Allow Auto Boluses",
-            "Enable SMB With COB": "When There Are COB",
-            "Enable SMB After Carbs": "For 6 hrs After Carb Entry",
-            "SMB Delivery Ratio": "Auto Bolus Delivery Ratio",
-            "Max SMB Basal Minutes": "Auto Bolus",
-            "Max UAM SMB Basal Minutes": "Auto Bolus - UAM",
-            "Max Allowed Glucose Rise for SMB": "Rise Threshold",
-            "Recommended Bolus Percentage": "Manual Bolus Delivery Ratio",
-            "Enable Reduced Bolus Factor": "Slow Absorption",
-            "Reduced Bolus Factor": "Slow Absorption",
-            "Enable Super Bolus": "Fast Absorption",
-            "Super Bolus Factor": "Add Scheduled Basal Upfront",
-            "Min 5m Carbimpact": "Min Rate of Carb Absorption",
-            "Remaining Carbs Fraction": "Carb Prediction Percentage",
-            "Remaining Carbs Cap": "Carb Prediction Limit",
-            "Noisy CGM Target Multiplier": "Erratic CGM → Raise Target"
-        ]
         var entries = navigationEntries
-        for item in SettingItems.allItems {
-            let page: SettingsFlowPage?
-            switch item.view {
-            case .dynamicISF, .autosensSettings: page = .dynamicISF
-            case .smbSettings, .bolusCalculatorConfig: page = .insulinDosing
-            case .targetBehavior: page = .dynamicISF
-            case .algorithmAdvancedSettings: page = .advanced
-            case .unitsAndLimits: page = .safetyLimits
-            case .remoteControlConfig: page = .caregivers
-            case .glucoseAlerts, .deviceAlarms, .alarmWindows, .notificationSettings: page = .notifications
-            default: page = nil
-            }
-            for label in item.searchContents ?? [item.title] {
-                let destination: SettingsFlowPage?
-                switch label {
-                case "Glucose Units", "eA1c/GMI Display Unit", "Time in Range Type", "Time in Tight Range (TITR)",
-                     "Time in Normoglycemia (TING)": destination = .languageUnits
-                case "Smooth Glucose Value": destination = .cgm
-                case "Max Carbs": destination = .safetyLimits
-                case "Max Meal Absorption Time": destination = .advanced
-                case "Noisy CGM Target Multiplier", "Max Allowed Glucose Rise for SMB": destination = .cgm
-                case "Skip Neutral Temps", "Unsuspend If No Temp": destination = .pumpAdvanced
-                case "Autosens Max", "Autosens Min", "Max Daily Safety Multiplier", "Current Basal Safety Multiplier",
-                     "Max SMB Basal Minutes", "Max UAM SMB Basal Minutes": destination = .safetyLimits
-                case "SMB Delivery Ratio": destination = .insulinDosing
-                case "SMB Interval": destination = .advanced
-                case "Rewind Resets Autosens": destination = .pumpAdvanced
-                case "Enable UAM", "Very Low Glucose Warning": destination = .additionalSafety
-                case "High Temptarget Raises Sensitivity", "Low Temptarget Lowers Sensitivity",
-                     "Half Basal Exercise Target", "Allow SMB With High Temporary Target", "Enable SMB With Temporary Target":
-                    continue
-                default: destination = page
-                }
-                let entry = Self(
-                    page: destination ?? .about, label: renamed[label] ?? label, aliases: label,
-                    legacyScreen: destination == nil ? item.view : nil,
-                    context: destination == nil ? item.title : nil
-                )
-                if !entries.contains(where: { $0.id == entry.id }) { entries.append(entry) }
+        let labels: [(SettingsFlowPage, [String])] = [
+            (.languageUnits, ["App Language", "Glucose", "eA1c/GMI", "TIR Lower Threshold"]),
+            (
+                .safetyLimits,
+                [
+                    "Safety Threshold",
+                    "Basal Rate",
+                    "Bolus",
+                    "Insulin on Board (IOB)",
+                    "Temporary Basal Rate",
+                    "Auto Bolus",
+                    "Auto Bolus - UAM",
+                    "ISF Strength Increase",
+                    "ISF Strength Decrease",
+                    "Carb Entry",
+                    "Carbs on Board (COB)"
+                ]
+            ),
+            (
+                .dynamicISF,
+                [
+                    "Adjustment Method",
+                    "Adjustment Factor",
+                    "Recent / Historical TDD",
+                    "Basal Adjustment Method",
+                    "Raise Target When Sensitive",
+                    "Lower Target When Resistant"
+                ]
+            ),
+            (
+                .insulinDosing,
+                [
+                    "Always Allow Auto Boluses",
+                    "When There Are COB",
+                    "For 6 hrs After Carb Entry",
+                    "When Glucose is Above",
+                    "Glucose Threshold",
+                    "Auto Bolus Delivery Ratio",
+                    "Manual Bolus Delivery Ratio",
+                    "Slow Absorption",
+                    "Fast Absorption",
+                    "Add Scheduled Basal Upfront"
+                ]
+            ),
+            (
+                .advanced,
+                [
+                    "Insulin Peak Time",
+                    "Duration of Insulin Action",
+                    "Auto Bolus Interval",
+                    "Max Duration of Carb Absorption",
+                    "Min Rate of Carb Absorption",
+                    "Carb Prediction Percentage",
+                    "Carb Prediction Limit"
+                ]
+            ),
+            (.additionalSafety, ["UAM Predictions", "Very Low Glucose Warning", "Overrides"]),
+            (.notifications, ["Permissions", "System Alerts", "Glucose Alerts", "Live Activity"]),
+            (.customize, ["Icon", "Appearance", "Quick-Pick Treatments", "Carbs"]),
+            (
+                .graph,
+                [
+                    "Grid Lines",
+                    "Lower Limit",
+                    "Upper Limit",
+                    "Range Graph Lines",
+                    "Color Style",
+                    "Forecast Style",
+                    "Bolus Label Threshold"
+                ]
+            ),
+            (.statisticsBar, ["Display Options"]),
+            (.services, ["Apple Health", "Nightscout", "Tidepool", "Shortcuts"]),
+            (.support, ["Analytics Sharing", "App Logs", "Report a Bug", "Trio Help Guide"])
+        ]
+        for (page, labels) in labels {
+            for label in labels where !entries.contains(where: { $0.page == page && $0.label == label }) {
+                entries.append(Self(page: page, label: label))
             }
         }
         return entries
@@ -301,26 +338,35 @@ struct SettingsFlowSearchEntry: Identifiable {
 struct SettingsFlowSearchResults: View {
     let query: String
     @ObservedObject var model: SettingsFlowModel
+    var onSelect: ((SettingsFlowSearchEntry) -> Void)? = nil
 
     var body: some View {
         let entries = SettingsFlowSearchEntry.matching(query)
-        if entries.isEmpty {
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            ContentUnavailableView(
+                "Search Settings",
+                systemImage: "magnifyingglass",
+                description: Text("Find a setting by name or description.")
+            )
+        } else if entries.isEmpty {
             ContentUnavailableView.search(text: query)
         } else {
             ForEach(entries) { entry in
-                NavigationLink {
-                    if let screen = entry.legacyScreen {
-                        SettingsScreenDestination(screen: screen, resolver: model.resolver)
-                    } else {
-                        SettingsFlowPageView(page: entry.page, model: model)
-                    }
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStringKey(entry.label))
-                        Text(LocalizedStringKey(entry.context ?? entry.page.title)).font(.caption).foregroundStyle(.secondary)
-                    }
+                if let onSelect {
+                    Button { onSelect(entry) } label: { label(entry) }
+                        .foregroundStyle(.primary)
+                } else {
+                    NavigationLink { SettingsFlowPageView(page: entry.page, model: model) } label: { label(entry) }
                 }
             }
+            .listRowBackground(Color.chart)
+        }
+    }
+
+    private func label(_ entry: SettingsFlowSearchEntry) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(LocalizedStringKey(entry.label))
+            Text(LocalizedStringKey(entry.page.title)).font(.caption).foregroundStyle(.secondary)
         }
     }
 }
@@ -332,5 +378,25 @@ private struct SettingsSearchToolbarBehavior: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+/// Observe the search environment inside the searchable view, where SwiftUI supplies it.
+private struct SettingsSearchLifecycle: ViewModifier {
+    @Binding var isPresented: Bool
+    @Binding var query: String
+    @Environment(\.isSearching) private var isSearching
+    @Environment(\.dismissSearch) private var dismissSearch
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: isSearching) { _, searching in
+                isPresented = searching
+                if !searching { query = "" }
+            }
+            .onChange(of: isPresented) { _, presented in
+                if !presented { dismissSearch() }
+            }
+            .onDisappear { dismissSearch() }
     }
 }

@@ -71,6 +71,8 @@ struct TrioCloudBackupDetailView: View {
         .disabled(restoring)
         .listSectionSpacing(sectionSpacing)
 
+        .settingsBackground()
+
         .navigationTitle("Backup Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

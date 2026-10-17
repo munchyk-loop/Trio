@@ -50,34 +50,26 @@ struct SettingsSystemAlertsView: View {
                 Toggle("Algorithm", isOn: .constant(true)).disabled(true)
                 Toggle("Insulin Pump", isOn: .constant(true)).disabled(true)
                 Toggle("CGM", isOn: .constant(true)).disabled(true)
-                Picker("Delivery", selection: Binding(
+                SettingsAlertDeliveryRow(selection: Binding(
                     get: { working.urgentDelivery ?? .alarm }, set: { working.urgentDelivery = $0 }
-                )) {
-                    Text("Critical").tag(SettingsAlertDelivery.critical)
-                    Text("Alarm").tag(SettingsAlertDelivery.alarm)
-                }
+                ), allowsTimeSensitive: false)
             }
             Section {
                 Toggle("Algorithm", isOn: $working.algorithm)
                 Toggle("Insulin Pump", isOn: $working.pump)
                 Toggle("CGM", isOn: $working.cgm)
-                Picker("Delivery", selection: Binding(
+                SettingsAlertDeliveryRow(selection: Binding(
                     get: { working.standardDelivery ?? .timeSensitive }, set: { working.standardDelivery = $0 }
-                )) {
-                    ForEach(SettingsAlertDelivery.allCases) { Text($0.title).tag($0) }
-                }
+                ))
+
             } header: { Text("Standard Alerts") } footer: {
                 SettingsHelpFooter(
                     title: "Standard Alerts",
                     text: "Standard alerts notify you about non-urgent system updates, status changes, and expiration reminders."
                 )
             }
-            Section {
-                NavigationLink("Sounds & Existing Alert Configuration") {
-                    SettingsScreenDestination(screen: .deviceAlarms, resolver: TrioApp.resolver)
-                }
-            }
         }
+        .settingsBackground()
         .navigationTitle("System Alerts")
         .onChange(of: working) { _, value in
             if let data = try? JSONEncoder()
@@ -86,5 +78,33 @@ struct SettingsSystemAlertsView: View {
                 Task { await CriticalAlertAlarmScheduler.requestAuthorization() }
             }
         }
+    }
+}
+
+struct SettingsAlertDeliveryRow: View {
+    @Binding var selection: SettingsAlertDelivery
+    var allowsTimeSensitive = true
+
+    var body: some View {
+        NavigationLink {
+            Form {
+                Section {
+                    Picker("Delivery", selection: $selection) {
+                        ForEach(SettingsAlertDelivery.allCases.filter { allowsTimeSensitive || $0 != .timeSensitive }) {
+                            Text($0.title).tag($0)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } footer: {
+                    Text(
+                        "Time Sensitive notifications can override Focus, but follow Silent mode. Critical notifications can override Focus and Silent mode. Alarms continue until dismissed."
+                    )
+                }
+                .listRowBackground(Color.chart)
+            }
+            .settingsBackground()
+            .navigationTitle("Delivery")
+            .navigationBarTitleDisplayMode(.inline)
+        } label: { LabeledContent("Delivery", value: selection.title) }
     }
 }

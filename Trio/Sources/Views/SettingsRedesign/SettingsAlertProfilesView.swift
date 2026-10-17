@@ -27,6 +27,7 @@ struct SettingsAlertProfilesView: View {
                 }
             }
         }
+        .settingsBackground()
         .navigationTitle("Glucose Alerts")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -158,6 +159,7 @@ private struct SettingsAlertProfileEditor: View {
                     }
                 }
             }
+            .settingsBackground()
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -272,6 +274,7 @@ private struct SettingsAlertScheduleEditor: View {
                     }
                 }
             }
+            .settingsBackground()
             .navigationTitle("Schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -333,15 +336,15 @@ private struct SettingsProfileAlertEditor: View {
                             spec: thresholdSpec,
                             units: units,
                             suffix: units == .mmolL ? "mmol/L/min" : "mg/dL/min",
-                            displayTransform: { units == .mmolL ? $0.asMmolL : $0 }
+                            displayTransform: { units == .mmolL ? $0.asMmolL : $0 }, presentation: .wheel
                         )
                     } else if working.type != .forecastedLow {
                         SettingsNumberRow(
                             title: working.type == .carbsRequired ? "Carbs" : "Glucose",
-                            value: $working.thresholdMgDL, spec: thresholdSpec, units: units
+                            value: $working.thresholdMgDL, spec: thresholdSpec, units: units, presentation: .wheel
                         )
                     }
-                    Picker("Delivery", selection: Binding(
+                    SettingsAlertDeliveryRow(selection: Binding(
                         get: { working.delivery ?? (working.overridesSilenceAndDND ? .alarm : .timeSensitive) },
                         set: {
                             working.delivery = $0
@@ -351,9 +354,7 @@ private struct SettingsProfileAlertEditor: View {
                             }
                             if $0 == .alarm { Task { await CriticalAlertAlarmScheduler.requestAuthorization() } }
                         }
-                    )) {
-                        ForEach(SettingsAlertDelivery.allCases) { Text($0.title).tag($0) }
-                    }
+                    ))
                     NavigationLink {
                         Form {
                             Picker("Sound or Vibrate", selection: Binding(
@@ -386,7 +387,7 @@ private struct SettingsProfileAlertEditor: View {
                                     "Sound Always requires Critical or Alarm delivery. Notification and haptic behavior also follows the permissions granted in iOS Settings."
                                 )
                             }
-                        }.navigationTitle("Sound or Vibrate")
+                        }.settingsBackground().navigationTitle("Sound or Vibrate")
                     } label: {
                         LabeledContent(
                             "Sound",
@@ -404,11 +405,14 @@ private struct SettingsProfileAlertEditor: View {
                     }
                 }
                 Section {
-                    Picker("Alert Snooze", selection: Binding(
-                        get: { working.snoozeMinutes ?? 15 }, set: { working.snoozeMinutes = $0 }
-                    )) {
-                        ForEach([5, 10, 15, 20, 30, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
-                    }
+                    SettingsNumberRow(
+                        title: "Alert Snooze",
+                        value: Binding(get: { Decimal(working.snoozeMinutes ?? 15) }, set: {
+                            working.snoozeMinutes = NSDecimalNumber(decimal: $0).intValue
+                        }),
+                        spec: PickerSetting(value: 15, step: 5, min: 5, max: 60, type: .minute),
+                        presentation: .wheel
+                    )
                 } footer: {
                     SettingsHelpFooter(
                         title: "Alert Snooze",
@@ -416,6 +420,7 @@ private struct SettingsProfileAlertEditor: View {
                     )
                 }
             }
+            .settingsBackground()
             .navigationTitle(working.type.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
