@@ -5,7 +5,8 @@ struct SettingsFlowRootView: View {
     let resolver: Resolver
     @ObservedObject var state: Settings.StateModel
     @StateObject private var model: SettingsFlowModel
-    @State private var showingSearch = false
+    @State private var searchQuery = ""
+    @State private var searchPresented = false
     @State private var showingModes = false
     @State private var knownVersionIssues = false
     @State private var availableVersion: String?
@@ -19,6 +20,81 @@ struct SettingsFlowRootView: View {
 
     var body: some View {
         List {
+            if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                settingsSections
+            } else {
+                SettingsFlowSearchResults(query: searchQuery, model: model)
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showingModes = true } label: {
+                    Label(model.settings.dosingMode.displayName, systemImage: model.settings.dosingMode.icon)
+                }
+                .accessibilityLabel("Dosing Mode")
+            }
+            if #available(iOS 26.0, *) {
+                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { searchPresented = true } label: { Image(systemName: "magnifyingglass") }
+                        .accessibilityLabel("Search Settings")
+                }
+            }
+        }
+        .searchable(text: $searchQuery, isPresented: $searchPresented, placement: .toolbar, prompt: "Search Settings")
+        .modifier(SettingsSearchToolbarBehavior())
+        .sheet(isPresented: $showingModes) {
+            NavigationStack {
+                Form {
+                    Section {
+                        Picker("Dosing Mode", selection: model.setting(\.dosingMode)) {
+                            ForEach(DosingMode.userSelectable) { Text($0.displayName).tag($0) }
+                        }
+                        .pickerStyle(.inline)
+                        .disabled(!state.hasCgmAndPump())
+                    } footer: {
+                        Text(
+                            "Trio analyzes your glucose every 5 minutes to calculate helpful insulin adjustments. Choose which adjustments Trio can make automatically. All modes require an active CGM and insulin pump."
+                        )
+                    }
+                    Section {
+                        ForEach(DosingMode.userSelectable) { mode in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label(mode.displayName, systemImage: mode.icon).font(.headline)
+                                Text(mode.description).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Dosing Mode")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button { showingModes = false } label: { Image(systemName: "checkmark") }
+                            .accessibilityLabel("Done")
+                    }
+                }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+        }
+        .task {
+            await releaseNotes.load()
+            let (_, latest, newer, blacklisted) = await AppVersionChecker.shared.refreshVersionInfo()
+            knownVersionIssues = blacklisted
+            availableVersion = newer ? latest : nil
+            if BuildDetails.shared.trioBranch != "main" {
+                let (version, newer) = await AppVersionChecker.shared.checkForNewDevVersion()
+                if newer { availableVersion = version }
+            }
+        }
+    }
+
+    private var settingsSections: some View {
+        Group {
             if knownVersionIssues {
                 Section {
                     Label("This version has known issues. Update Trio.", systemImage: "exclamationmark.octagon.fill")
@@ -81,70 +157,6 @@ struct SettingsFlowRootView: View {
                         Text(date, style: .date).foregroundStyle(.secondary)
                     }
                 }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Settings")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showingModes = true } label: {
-                    Label(model.settings.dosingMode.displayName, systemImage: model.settings.dosingMode.icon)
-                }
-                .accessibilityLabel("Dosing Mode")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { showingSearch = true } label: { Image(systemName: "magnifyingglass") }
-                    .accessibilityLabel("Search Settings")
-            }
-        }
-        .sheet(isPresented: $showingSearch) {
-            SettingsFlowSearchView(model: model)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-        }
-        .sheet(isPresented: $showingModes) {
-            NavigationStack {
-                Form {
-                    Section {
-                        Picker("Dosing Mode", selection: model.setting(\.dosingMode)) {
-                            ForEach(DosingMode.userSelectable) { Text($0.displayName).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                        .disabled(!state.hasCgmAndPump())
-                    } footer: {
-                        Text(
-                            "Trio analyzes your glucose every 5 minutes to calculate helpful insulin adjustments. Choose which adjustments Trio can make automatically. All modes require an active CGM and insulin pump."
-                        )
-                    }
-                    Section {
-                        ForEach(DosingMode.userSelectable) { mode in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Label(mode.displayName, systemImage: mode.icon).font(.headline)
-                                Text(mode.description).font(.subheadline).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-                .navigationTitle("Dosing Mode")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button { showingModes = false } label: { Image(systemName: "checkmark") }
-                            .accessibilityLabel("Done")
-                    }
-                }
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-        }
-        .task {
-            await releaseNotes.load()
-            let (_, latest, newer, blacklisted) = await AppVersionChecker.shared.refreshVersionInfo()
-            knownVersionIssues = blacklisted
-            availableVersion = newer ? latest : nil
-            if BuildDetails.shared.trioBranch != "main" {
-                let (version, newer) = await AppVersionChecker.shared.checkForNewDevVersion()
-                if newer { availableVersion = version }
             }
         }
     }
@@ -285,17 +297,20 @@ struct SettingsFlowSearchEntry: Identifiable {
     }
 }
 
-struct SettingsFlowSearchView: View {
+/// Search results are rows in the main Settings list, with the same navigation stack.
+struct SettingsFlowSearchResults: View {
+    let query: String
     @ObservedObject var model: SettingsFlowModel
-    @State private var query = ""
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            List(SettingsFlowSearchEntry.matching(query)) { entry in
+        let entries = SettingsFlowSearchEntry.matching(query)
+        if entries.isEmpty {
+            ContentUnavailableView.search(text: query)
+        } else {
+            ForEach(entries) { entry in
                 NavigationLink {
                     if let screen = entry.legacyScreen {
-                        screen.view(resolver: model.resolver)
+                        SettingsScreenDestination(screen: screen, resolver: model.resolver)
                     } else {
                         SettingsFlowPageView(page: entry.page, model: model)
                     }
@@ -306,13 +321,16 @@ struct SettingsFlowSearchView: View {
                     }
                 }
             }
-            .searchable(text: $query, prompt: "Search Settings")
-            .navigationTitle("Search Settings")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Close")
-                }
-            }
+        }
+    }
+}
+
+private struct SettingsSearchToolbarBehavior: ViewModifier {
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.searchToolbarBehavior(.minimize)
+        } else {
+            content
         }
     }
 }

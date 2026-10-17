@@ -12,12 +12,14 @@ struct SettingsFlowPageView: View {
     @State private var authenticationError: String?
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("colorSchemePreference") private var appearance: ColorSchemeOption = .systemDefault
-    private let specs = DecimalPickerSettings()
+    // Keep the picker catalogue out of this value-type view. Navigation and Form
+    // closures copy the view, so storing every picker here exhausts the device stack.
+    private var specs: DecimalPickerSettings { PickerSettingsProvider.shared.settings }
 
     var body: some View {
         Group {
             if page == .caregivers {
-                Screen.remoteControlConfig.view(resolver: model.resolver)
+                SettingsScreenDestination(screen: .remoteControlConfig, resolver: model.resolver)
             } else {
                 Form { content }
             }
@@ -69,7 +71,7 @@ struct SettingsFlowPageView: View {
     }
 
     private func screen(_ title: String, _ screen: Screen) -> some View {
-        NavigationLink(LocalizedStringKey(title)) { screen.view(resolver: model.resolver) }
+        NavigationLink(LocalizedStringKey(title)) { SettingsScreenDestination(screen: screen, resolver: model.resolver) }
     }
 
     private func number(

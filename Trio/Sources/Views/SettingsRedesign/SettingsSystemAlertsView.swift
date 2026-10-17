@@ -74,7 +74,7 @@ struct SettingsSystemAlertsView: View {
             }
             Section {
                 NavigationLink("Sounds & Existing Alert Configuration") {
-                    Screen.deviceAlarms.view(resolver: TrioApp.resolver)
+                    SettingsScreenDestination(screen: .deviceAlarms, resolver: TrioApp.resolver)
                 }
             }
         }

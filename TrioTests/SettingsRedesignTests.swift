@@ -16,12 +16,15 @@ import UIKit
             previous?.makeKey()
         }
         let model = SettingsFlowModel(resolver: TrioApp.resolver)
-        let screens: [(String, AnyView)] = [
-            ("settings", AnyView(Settings.RootView(resolver: TrioApp.resolver))),
-            ("profile", AnyView(SettingsFlowPageView(page: .profile, model: model))),
-            ("safety", AnyView(SettingsFlowPageView(page: .safetyLimits, model: model))),
-            ("insulin-dosing", AnyView(SettingsFlowPageView(page: .insulinDosing, model: model))),
-            ("alert-profiles", AnyView(SettingsAlertProfilesView(model: model)))
+        var screens: [(String, AnyView)] = [
+            ("settings", AnyView(Settings.RootView(resolver: TrioApp.resolver)))
+        ]
+        screens += SettingsFlowPage.allCases.filter { $0 != .personalInformation }.map { page in
+            (page.rawValue, AnyView(SettingsFlowPageView(page: page, model: model)))
+        }
+        screens += [
+            ("watch-destination", AnyView(SettingsScreenDestination(screen: .watch, resolver: TrioApp.resolver))),
+            ("search-results", AnyView(List { SettingsFlowSearchResults(query: "noisy cgm", model: model) }))
         ]
         let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SettingsReview", isDirectory: true)
@@ -40,6 +43,13 @@ import UIKit
             }
             try #require(image.pngData()).write(to: directory.appendingPathComponent(name + ".png"))
         }
+    }
+
+    @Test("Settings navigation values stay small enough for the iPhone stack") func navigationStackBudget() {
+        // Forms and navigation closures copy these values while constructing destinations.
+        // Storing the entire picker catalogue here caused a device stack overflow.
+        #expect(MemoryLayout<SettingsFlowPageView>.stride < 1024)
+        #expect(MemoryLayout<SettingsScreenDestination>.stride < 256)
     }
 
     private var calendar: Calendar {

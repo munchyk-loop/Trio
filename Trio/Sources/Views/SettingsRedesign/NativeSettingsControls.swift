@@ -1,4 +1,5 @@
 import SwiftUI
+import Swinject
 
 struct SettingsHelpFooter: View {
     let title: String
@@ -120,5 +121,15 @@ struct SettingsPlaceholderLabel: View {
                 .accessibilityHidden(true)
             Text(LocalizedStringKey(title))
         }
+    }
+}
+
+/// Resolve a destination only after navigation presents it, outside the parent form's stack frame.
+struct SettingsScreenDestination: View {
+    let screen: Screen
+    let resolver: Resolver
+
+    var body: some View {
+        resolver.resolve(Router.self)!.view(for: screen)
     }
 }
