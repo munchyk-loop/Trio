@@ -129,10 +129,7 @@ struct SettingsFlowRootView: View {
                     SettingsFlowPageView(page: .profile, model: model)
                 } label: {
                     HStack(spacing: 16) {
-                        Text(model.userProfile.initials)
-                            .font(.title2.weight(.semibold))
-                            .frame(width: 54, height: 54)
-                            .background(Color.accentColor.opacity(0.15), in: Circle())
+                        SettingsProfileAvatar(profile: model.userProfile)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(model.userProfile.name.isEmpty ? String(localized: "Your Profile") : model.userProfile.name)
@@ -159,7 +156,7 @@ struct SettingsFlowRootView: View {
                     SettingsFlowPageView(page: .about, model: model)
                 } label: {
                     HStack {
-                        SettingsPlaceholderLabel(title: "About")
+                        SettingsRowLabel(title: "About")
                         Spacer()
                         Text(Bundle.main.appDevVersion ?? "Unknown").foregroundStyle(.secondary)
                     }
@@ -167,11 +164,11 @@ struct SettingsFlowRootView: View {
                 if !releaseNotes.releases.isEmpty {
                     NavigationLink {
                         ReleaseNotesListView(releases: releaseNotes.releases)
-                    } label: { SettingsPlaceholderLabel(title: "Release Notes") }
+                    } label: { SettingsRowLabel(title: "Release Notes") }
                 }
                 if let date = BuildDetails.shared.calculateExpirationDate() {
                     HStack {
-                        SettingsPlaceholderLabel(title: "Expiration")
+                        SettingsRowLabel(title: "Expiration")
                         Spacer()
                         Text(date, style: .date).foregroundStyle(.secondary)
                     }
@@ -183,7 +180,7 @@ struct SettingsFlowRootView: View {
     private func row(_ page: SettingsFlowPage) -> some View {
         NavigationLink {
             SettingsFlowPageView(page: page, model: model)
-        } label: { SettingsPlaceholderLabel(title: page.title) }
+        } label: { SettingsRowLabel(title: page.title) }
     }
 }
 

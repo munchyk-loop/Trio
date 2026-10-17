@@ -54,6 +54,21 @@ import UIKit
                 ).wheelContent)
             )
         ]
+        let avatarFormat = UIGraphicsImageRendererFormat()
+        avatarFormat.scale = 1
+        let avatarImage = UIGraphicsImageRenderer(size: CGSize(width: 320, height: 160), format: avatarFormat).image { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 320, height: 160))
+            UIColor.systemOrange.setFill()
+            context.fill(CGRect(x: 120, y: 0, width: 80, height: 160))
+        }
+        screens += [("profile-avatars", AnyView(HStack(spacing: 24) {
+            SettingsProfileAvatar(profile: SettingsUserProfile(name: "Olivia Rose Wilson"), size: 76)
+            SettingsProfileAvatar(
+                profile: SettingsUserProfile(name: "Olivia Rose Wilson", photoData: avatarImage.pngData()),
+                size: 76
+            )
+        }))]
         let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SettingsReview", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -151,6 +166,50 @@ import UIKit
         preferences.skipNeutralTemps = true
         manager.preferences = preferences
         #expect(!manager.preferences.skipNeutralTemps)
+    }
+
+    @Test("Profile initials use the first and last words of the name") func profileInitials() {
+        for (name, initials) in [
+            ("Mendel David Kaplan", "MK"),
+            ("  Olivia\nRose  Wilson  ", "OW"),
+            ("Mendel", "M"),
+            ("éva van der Meer", "ÉM"),
+            (" \n ", "—")
+        ] {
+            #expect(SettingsUserProfile(name: name).initials == initials)
+        }
+    }
+
+    @Test("Existing profiles decode without a photo and photos survive serialization") func profilePhotoPersistence() throws {
+        let old = try JSONDecoder()
+            .decode(SettingsUserProfile.self, from: Data(#"{"name":"Olivia Rose Wilson","sex":"female"}"#.utf8))
+        #expect(old.photoData == nil)
+        #expect(old.initials == "OW")
+        var updated = old
+        updated.photoData = Data([1, 2, 3])
+        #expect(try JSONDecoder().decode(SettingsUserProfile.self, from: JSONEncoder().encode(updated)) == updated)
+    }
+
+    @Test("Profile photos are downsampled and invalid images are rejected")
+    @MainActor func profilePhotoPreparation() throws {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let source = UIGraphicsImageRenderer(size: CGSize(width: 1600, height: 900), format: format).image { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 1600, height: 900))
+        }
+        let sourceData = try #require(source.pngData())
+        let data = try #require(SettingsProfilePhoto.prepare(sourceData))
+        let result = try #require(UIImage(data: data)?.cgImage)
+        #expect(max(result.width, result.height) == 512)
+        #expect(data.count < 256 * 1024)
+        #expect(SettingsProfilePhoto.prepare(Data("invalid image".utf8)) == nil)
+    }
+
+    @Test("Every supplied settings icon is present in the asset catalog")
+    @MainActor func settingsIcons() {
+        #expect(SettingsRowLabel.iconNames.count == 11)
+        for name in SettingsRowLabel.iconNames.values { #expect(UIImage(named: name) != nil) }
     }
 
     private var calendar: Calendar {

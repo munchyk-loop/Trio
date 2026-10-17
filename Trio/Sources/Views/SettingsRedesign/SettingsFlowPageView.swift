@@ -1,6 +1,7 @@
 import HealthKit
 import LocalAuthentication
 import LoopKit
+import PhotosUI
 import SwiftUI
 import Swinject
 
@@ -8,6 +9,8 @@ struct SettingsFlowPageView: View {
     let page: SettingsFlowPage
     @ObservedObject var model: SettingsFlowModel
     @State private var showLogs = false
+    @State private var selectedProfilePhoto: PhotosPickerItem?
+    @State private var loadingProfilePhoto = false
     @State private var personalInformationUnlocked = false
     @State private var authenticationError: String?
     @Environment(\.scenePhase) private var scenePhase
@@ -33,6 +36,23 @@ struct SettingsFlowPageView: View {
         .alert("Settings", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(model.error ?? "") }
+        .task(id: selectedProfilePhoto) {
+            guard let selection = selectedProfilePhoto else { return }
+            loadingProfilePhoto = true
+            defer { loadingProfilePhoto = false }
+            do {
+                guard let data = try await selection.loadTransferable(type: Data.self),
+                      let photo = SettingsProfilePhoto.prepare(data)
+                else {
+                    if !Task.isCancelled { model.error = String(localized: "The selected photo could not be loaded.") }
+                    return
+                }
+                guard !Task.isCancelled, selection == selectedProfilePhoto else { return }
+                model.profileField(\.photoData).wrappedValue = photo
+            } catch {
+                if !Task.isCancelled { model.error = String(localized: "The selected photo could not be loaded.") }
+            }
+        }
         .task {
             if page == .personalInformation { await unlockPersonalInformation() }
         }
@@ -105,15 +125,29 @@ struct SettingsFlowPageView: View {
         Group {
             Section {
                 VStack(spacing: 12) {
-                    Text(model.userProfile.initials)
-                        .font(.largeTitle.weight(.semibold))
-                        .frame(width: 76, height: 76)
-                        .background(Color.accentColor.opacity(0.15), in: Circle())
+                    PhotosPicker(selection: $selectedProfilePhoto, matching: .images) {
+                        SettingsProfileAvatar(profile: model.userProfile, size: 76)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Change Profile Photo")
                     Text(model.userProfile.name.isEmpty ? String(localized: "Your Profile") : model.userProfile.name)
                         .font(.title2.weight(.semibold))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical)
+            }
+            Section("Profile Photo") {
+                PhotosPicker(selection: $selectedProfilePhoto, matching: .images) {
+                    Label(model.userProfile.photoData == nil ? "Choose Photo" : "Change Photo", systemImage: "photo")
+                }
+                .disabled(loadingProfilePhoto)
+                if loadingProfilePhoto { ProgressView("Loading Photo") }
+                if model.userProfile.photoData != nil {
+                    Button("Use Initials", systemImage: "person.crop.circle") {
+                        selectedProfilePhoto = nil
+                        model.profileField(\.photoData).wrappedValue = nil
+                    }
+                }
             }
             Section {
                 link(.personalInformation)

@@ -6,14 +6,17 @@ import Swinject
 
 struct SettingsUserProfile: Codable, Equatable {
     var name = ""
+    var photoData: Data? = nil
     var dateOfBirth: Date?
     var heightCM: Double?
     var weightKG: Double?
     var sex = ""
 
     var initials: String {
-        let letters = name.split(separator: " ").prefix(2).compactMap(\.first)
-        return letters.isEmpty ? "—" : String(letters).uppercased()
+        let words = name.split(whereSeparator: \.isWhitespace)
+        guard let first = words.first?.first else { return "—" }
+        let letters = words.count > 1 ? [first, words.last!.first!] : [first]
+        return String(letters).uppercased()
     }
 }
 

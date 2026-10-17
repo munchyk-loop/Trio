@@ -1,5 +1,7 @@
+import ImageIO
 import SwiftUI
 import Swinject
+import UIKit
 
 /// Use the same background and card color as the rest of Trio.
 struct SettingsBackground: ViewModifier {
@@ -221,16 +223,65 @@ struct SettingsNumberRow: View {
     }
 }
 
-struct SettingsPlaceholderLabel: View {
+struct SettingsRowLabel: View {
     let title: String
+
+    static let iconNames: [String: String] = [
+        "Devices": "SettingsDevices", "Therapy": "SettingsTherapy",
+        "Algorithm": "SettingsAlgorithm", "Notifications": "SettingsNotifications",
+        "Customize": "SettingsCustomize", "Services": "SettingsServices",
+        "Caregivers": "SettingsCaregivers", "Support": "SettingsSupport",
+        "About": "SettingsAbout", "Release Notes": "SettingsReleaseNotes",
+        "Expiration": "SettingsExpiration"
+    ]
+
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 7)
-                .fill(.quaternary)
-                .frame(width: 29, height: 29)
-                .accessibilityHidden(true)
+            if let icon = Self.iconNames[title] {
+                Image(icon)
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 29, height: 29)
+                    .accessibilityHidden(true)
+            }
             Text(LocalizedStringKey(title))
         }
+    }
+}
+
+struct SettingsProfileAvatar: View {
+    let profile: SettingsUserProfile
+    var size: CGFloat = 54
+
+    var body: some View {
+        Group {
+            if let data = profile.photoData, let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                Text(profile.initials)
+                    .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(size * 0.12)
+            }
+        }
+        .frame(width: size, height: size)
+        .background(Color.accentColor.opacity(0.15), in: Circle())
+        .clipShape(Circle())
+    }
+}
+
+enum SettingsProfilePhoto {
+    static func prepare(_ data: Data) -> Data? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 512
+              ] as CFDictionary) else { return nil }
+        // Store a small, orientation-correct image without the original photo metadata.
+        return UIImage(cgImage: thumbnail).jpegData(compressionQuality: 0.8)
     }
 }
 
