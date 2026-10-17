@@ -24,35 +24,38 @@ struct TrioCloudBackupConfigurationView: View {
 
     var body: some View {
         List {
-            SettingInputSection(
-                decimalValue: $decimalPlaceholder,
-                booleanValue: $automatic,
-                shouldDisplayHint: $shouldDisplayHint,
-                selectedVerboseHint: Binding(
-                    get: { selectedVerboseHint },
-                    set: {
-                        selectedVerboseHint = $0.map { AnyView($0) }
-                        hintLabel = String(localized: "Automatic Backup")
-                    }
-                ),
-                units: .mgdL,
-                type: .boolean,
-                label: automatic ? String(localized: "Enabled") : String(localized: "Disabled"),
-                miniHint: automaticDescription,
-                verboseHint: VStack(alignment: .leading, spacing: 10) {
-                    Text(automaticDescription)
-                    Text(
-                        "Checks run while Trio is running or the next time you open it. Unchanged settings do not create another backup."
-                    )
-                    Text("Dynamic ISF history is included in backups, but new history alone does not trigger a backup.")
-                },
-                headerText: String(localized: "Automatic Backup")
-            )
-            Section("Backup Retention") {
-                retentionRow
-            }
-            if pending > 0 { Text("\(pending) backup operation(s) pending.") }
-            if let error { Text(error).foregroundStyle(.secondary) }
+            Group {
+                SettingInputSection(
+                    decimalValue: $decimalPlaceholder,
+                    booleanValue: $automatic,
+                    shouldDisplayHint: $shouldDisplayHint,
+                    selectedVerboseHint: Binding(
+                        get: { selectedVerboseHint },
+                        set: {
+                            selectedVerboseHint = $0.map { AnyView($0) }
+                            hintLabel = String(localized: "Automatic Backup")
+                        }
+                    ),
+                    units: .mgdL,
+                    type: .boolean,
+                    label: automatic ? String(localized: "Enabled") : String(localized: "Disabled"),
+                    miniHint: automaticDescription,
+                    verboseHint: VStack(alignment: .leading, spacing: 10) {
+                        Text(automaticDescription)
+                        Text(
+                            "Checks run while Trio is running or the next time you open it. Unchanged settings do not create another backup."
+                        )
+                        Text("Dynamic ISF history is included in backups, but new history alone does not trigger a backup.")
+                    },
+                    headerText: String(localized: "Automatic Backup")
+                )
+                Section("Backup Retention") {
+                    retentionRow
+                }
+                if pending > 0 { Text("\(pending) backup operation(s) pending.") }
+                if let error { Text(error).foregroundStyle(.secondary) }
+
+            }.listRowBackground(Color.chart)
         }
 
         .listSectionSpacing(sectionSpacing)

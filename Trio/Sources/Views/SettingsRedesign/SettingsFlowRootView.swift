@@ -7,6 +7,7 @@ struct SettingsFlowRootView: View {
     @StateObject private var model: SettingsFlowModel
     @State private var searchQuery = ""
     @State private var searchPresented = false
+    @FocusState private var searchFocused: Bool
     @State private var showingModes = false
     @State private var searchDestination: SettingsFlowSearchEntry?
     @State private var knownVersionIssues = false
@@ -31,7 +32,6 @@ struct SettingsFlowRootView: View {
                 }
             }
         }
-        .modifier(SettingsSearchLifecycle(isPresented: $searchPresented, query: $searchQuery))
         .listStyle(.insetGrouped)
         .settingsBackground()
         .navigationTitle(searchPresented ? "" : "Settings")
@@ -42,28 +42,38 @@ struct SettingsFlowRootView: View {
         .onChange(of: searchPresented) { _, presented in
             if !presented { searchQuery = "" }
         }
+        .task(id: searchPresented) { searchFocused = searchPresented }
         .onDisappear {
             searchPresented = false
             searchQuery = ""
         }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showingModes = true } label: {
-                    Label(model.settings.dosingMode.displayName, systemImage: model.settings.dosingMode.icon)
+            if searchPresented {
+                ToolbarItem(placement: .principal) {
+                    SettingsToolbarSearchField(text: $searchQuery, focused: $searchFocused)
                 }
-                .accessibilityLabel("Dosing Mode")
-            }
-            if #available(iOS 26.0, *) {
-                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
-            } else {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { searchPresented = true } label: { Image(systemName: "magnifyingglass") }
+                    Button {
+                        searchPresented = false
+                        searchQuery = ""
+                    } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close Search")
+                        .accessibilityIdentifier("settings.search.close")
+                }
+            } else {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingModes = true } label: {
+                        Label(model.settings.dosingMode.displayName, systemImage: model.settings.dosingMode.icon)
+                    }
+                    .accessibilityLabel("Dosing Mode")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { withAnimation { searchPresented = true } } label: { Image(systemName: "magnifyingglass") }
                         .accessibilityLabel("Search Settings")
+                        .accessibilityIdentifier("settings.search.open")
                 }
             }
         }
-        .searchable(text: $searchQuery, isPresented: $searchPresented, placement: .toolbar, prompt: "Search Settings")
-        .modifier(SettingsSearchToolbarBehavior())
         .sheet(isPresented: $showingModes) {
             NavigationStack {
                 Form {
@@ -114,16 +124,6 @@ struct SettingsFlowRootView: View {
 
     private var settingsSections: some View {
         Group {
-            if knownVersionIssues {
-                Section {
-                    Label("This version has known issues. Update Trio.", systemImage: "exclamationmark.octagon.fill")
-                        .foregroundStyle(.red)
-                }
-            } else if let availableVersion {
-                Section {
-                    Label("Trio \(availableVersion) is available.", systemImage: "arrow.up.circle")
-                }
-            }
             Section {
                 NavigationLink {
                     SettingsFlowPageView(page: .profile, model: model)
@@ -139,6 +139,16 @@ struct SettingsFlowRootView: View {
                         }
                     }
                     .padding(.vertical, 8)
+                }
+            }
+            if knownVersionIssues {
+                Section {
+                    Label("This version has known issues. Update Trio.", systemImage: "exclamationmark.octagon.fill")
+                        .foregroundStyle(.red)
+                }
+            } else if let availableVersion {
+                Section {
+                    Label("Trio \(availableVersion) is available.", systemImage: "arrow.up.circle")
                 }
             }
             Section {
@@ -339,25 +349,28 @@ struct SettingsFlowSearchResults: View {
 
     var body: some View {
         let entries = SettingsFlowSearchEntry.matching(query)
-        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            ContentUnavailableView(
-                "Search Settings",
-                systemImage: "magnifyingglass",
-                description: Text("Find a setting by name or description.")
-            )
-        } else if entries.isEmpty {
-            ContentUnavailableView.search(text: query)
-        } else {
-            ForEach(entries) { entry in
-                if let onSelect {
-                    Button { onSelect(entry) } label: { label(entry) }
-                        .foregroundStyle(.primary)
-                } else {
-                    NavigationLink { SettingsFlowPageView(page: entry.page, model: model) } label: { label(entry) }
+        Section {
+            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                ContentUnavailableView(
+                    "Search Settings",
+                    systemImage: "magnifyingglass",
+                    description: Text("Find a setting by name or description.")
+                )
+            } else if entries.isEmpty {
+                ContentUnavailableView.search(text: query)
+            } else {
+                ForEach(entries) { entry in
+                    if let onSelect {
+                        Button { onSelect(entry) } label: { label(entry) }
+                            .foregroundStyle(.primary)
+                    } else {
+                        NavigationLink { SettingsFlowPageView(page: entry.page, model: model) } label: { label(entry) }
+                    }
                 }
+                .listRowBackground(Color.chart)
             }
-            .listRowBackground(Color.chart)
         }
+        .listRowBackground(Color.chart)
     }
 
     private func label(_ entry: SettingsFlowSearchEntry) -> some View {
@@ -368,32 +381,41 @@ struct SettingsFlowSearchResults: View {
     }
 }
 
-private struct SettingsSearchToolbarBehavior: ViewModifier {
-    @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.searchToolbarBehavior(.minimize)
-        } else {
-            content
+/// The field exists only while search is open, so closing it removes its focus
+/// and toolbar presentation together rather than reflecting system state back.
+struct SettingsToolbarSearchField: View {
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Search Settings", text: $text)
+                .textFieldStyle(.plain)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused(focused)
+                .accessibilityIdentifier("settings.search.field")
+            if !text.isEmpty {
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear Search")
+            }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minWidth: 170, idealWidth: 250, maxWidth: .infinity)
+        .modifier(SettingsSearchFieldBackground())
     }
 }
 
-/// Observe the search environment inside the searchable view, where SwiftUI supplies it.
-private struct SettingsSearchLifecycle: ViewModifier {
-    @Binding var isPresented: Bool
-    @Binding var query: String
-    @Environment(\.isSearching) private var isSearching
-    @Environment(\.dismissSearch) private var dismissSearch
-
-    func body(content: Content) -> some View {
-        content
-            .onChange(of: isSearching) { _, searching in
-                isPresented = searching
-                if !searching { query = "" }
-            }
-            .onChange(of: isPresented) { _, presented in
-                if !presented { dismissSearch() }
-            }
-            .onDisappear { dismissSearch() }
+private struct SettingsSearchFieldBackground: ViewModifier {
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.regularMaterial, in: Capsule())
+        }
     }
 }

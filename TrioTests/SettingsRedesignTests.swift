@@ -4,7 +4,7 @@ import Testing
 import UIKit
 @testable import Trio
 
-@Suite("Settings Redesign") struct SettingsRedesignTests {
+@Suite("Settings Redesign", .serialized) struct SettingsRedesignTests {
     @Test("Native settings forms mount in a navigation stack")
     @MainActor func nativeFormsRender() async throws {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
@@ -69,6 +69,55 @@ import UIKit
                 size: 76
             )
         }))]
+        let suite = "settings-render-alerts-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let alerts = GlucoseAlertsStore(defaults: defaults)
+        let profiles = SettingsAlertProfilesStore(defaults: defaults, alertsStore: alerts)
+        let night = SettingsAlertProfile(
+            name: "Night",
+            symbol: "moon.fill",
+            schedule: .init(kind: .time, startMinute: 22 * 60, endMinute: 7 * 60 + 30, weekdays: [1, 2, 3, 4, 5]),
+            alerts: SettingsAlertProfilesStore.defaultProfiles()[0].alerts
+        )
+        profiles.save(night)
+        var day = night
+        day.id = UUID()
+        day.name = "Day"
+        day.symbol = "sun.max.fill"
+        day.isEnabled = false
+        profiles.save(day)
+        screens += [
+            (
+                "alerts-disabled-card",
+                AnyView(ScrollView { SettingsAlertProfileCard(profile: day, units: .mgdL, enabled: .constant(false)) {}.padding()
+                }.settingsBackground())
+            ),
+            ("alerts-profiles", AnyView(SettingsAlertProfilesView(model: model, store: profiles))),
+            ("alerts-editor", AnyView(SettingsAlertProfileEditor(initial: night, units: .mgdL, store: profiles))),
+            ("alerts-schedule", AnyView(SettingsAlertScheduleEditor(initial: night.schedule, store: profiles) { _ in })),
+            ("alerts-low", AnyView(SettingsProfileAlertEditor(initial: GlucoseAlert(type: .low), units: .mgdL) { _ in })),
+            ("alerts-delivery", AnyView(SettingsAlertDeliveryView(selection: .constant(.critical)))),
+            (
+                "alerts-sound",
+                AnyView(SettingsAlertSoundView(
+                    mode: .constant(.matchPhone),
+                    filename: .constant("trill.caf"),
+                    delivery: .critical
+                ))
+            ),
+            ("search-empty", AnyView(List { SettingsFlowSearchResults(query: "", model: model) }.settingsBackground())),
+            (
+                "search-no-results",
+                AnyView(List { SettingsFlowSearchResults(query: "definitely absent setting", model: model) }.settingsBackground())
+            ),
+            (
+                "range-wheels",
+                AnyView(SettingsGlucoseRangeRow(lower: .constant(70), upper: .constant(170), units: .mgdL).pickerContent)
+            ),
+            ("backup-home", AnyView(TrioCloudBackupView())),
+            ("backup-configuration", AnyView(TrioCloudBackupConfigurationView()))
+        ]
         let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SettingsReview", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -86,7 +135,7 @@ import UIKit
                 window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
             }
             try #require(image.pngData()).write(to: directory.appendingPathComponent(name + ".png"))
-            if name == "settings" || name == "help-card" {
+            if name == "settings" || name == "help-card" || name == "alerts-profiles" || name == "backup-home" {
                 window.overrideUserInterfaceStyle = .light
                 try await Task.sleep(for: .milliseconds(100))
                 controller.view.layoutIfNeeded()
@@ -210,6 +259,53 @@ import UIKit
     @MainActor func settingsIcons() {
         #expect(SettingsRowLabel.iconNames.count == 11)
         for name in SettingsRowLabel.iconNames.values { #expect(UIImage(named: name) != nil) }
+    }
+
+    @Test("Saving an alert profile opts into Trio alerts and excludes the removed alert type")
+    @MainActor func savedProfileEnablesTrioAlerts() throws {
+        let suite = "settings-save-alerts-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let alerts = GlucoseAlertsStore(defaults: defaults)
+        let profiles = SettingsAlertProfilesStore(defaults: defaults, alertsStore: alerts)
+        #expect(!alerts.configuration.forceTrioAlertsWhenCGMProvidesOwn)
+        #expect(profiles.profiles[0].supportedAlerts.count == 5)
+        profiles.save(SettingsAlertProfile(name: "Work", alerts: GlucoseAlertsStore.defaultAlerts()))
+        #expect(alerts.configuration.forceTrioAlertsWhenCGMProvidesOwn)
+        #expect(profiles.profiles.first { $0.name == "Work" }?.alerts.contains { $0.type == .carbsRequired } == false)
+        #expect(!alerts.alerts.contains { $0.type == .carbsRequired })
+    }
+
+    @Test("Closing and reopening the toolbar search removes its text field and keyboard focus")
+    @MainActor func searchFieldPresentationLifecycle() async throws {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let previous = scene.keyWindow
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 430, height: 932)
+        let controller = UIHostingController(rootView: AnyView(Text("Settings")))
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true
+            previous?.makeKey() }
+
+        func fields(_ view: UIView) -> [UITextField] {
+            (view as? UITextField).map { [$0] } ?? view.subviews.flatMap(fields)
+        }
+        for _ in 0 ..< 3 {
+            controller.rootView = AnyView(SettingsSearchFocusTestHost())
+            try await Task.sleep(for: .milliseconds(250))
+            controller.view.layoutIfNeeded()
+            let field = try #require(fields(window).first)
+            for _ in 0 ..< 20 where !field.isFirstResponder {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            #expect(field.isFirstResponder)
+            controller.rootView = AnyView(Text("Settings"))
+            try await Task.sleep(for: .milliseconds(250))
+            controller.view.layoutIfNeeded()
+            #expect(fields(window).isEmpty)
+            #expect(!field.isFirstResponder)
+        }
     }
 
     private var calendar: Calendar {
@@ -367,5 +463,19 @@ import UIKit
         #expect(settings.manualBolusFactors(slow: true, fast: false).fraction == 0.6)
         #expect(settings.manualBolusFactors(slow: false, fast: true).fraction == 1.1)
         #expect(settings.manualBolusFactors(slow: false, fast: false).fraction == 0.9)
+    }
+}
+
+private struct SettingsSearchFocusTestHost: View {
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Text("Search results").toolbar {
+                ToolbarItem(placement: .principal) {
+                    SettingsToolbarSearchField(text: .constant("glucose"), focused: $focused)
+                }
+            }
+        }.task { focused = true }
     }
 }

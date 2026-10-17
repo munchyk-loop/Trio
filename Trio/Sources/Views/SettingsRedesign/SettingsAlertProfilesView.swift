@@ -4,38 +4,49 @@ import SwiftUI
 
 struct SettingsAlertProfilesView: View {
     @ObservedObject var model: SettingsFlowModel
-    @ObservedObject private var store = SettingsAlertProfilesStore.shared
-    @ObservedObject private var alertsStore = GlucoseAlertsStore.shared
+    @ObservedObject private var store: SettingsAlertProfilesStore
     @State private var editing: SettingsAlertProfile?
+
+    init(model: SettingsFlowModel, store: SettingsAlertProfilesStore = .shared) {
+        self.model = model
+        self.store = store
+    }
 
     var body: some View {
         List {
             Section {
-                Toggle("Use Trio Glucose Alerts", isOn: $alertsStore.configuration.forceTrioAlertsWhenCGMProvidesOwn)
-            } footer: {
                 SettingsHelpFooter(
                     title: "Glucose Alerts",
                     text: "Glucose alerts should only be enabled in one app at a time. To receive glucose alerts from Trio, disable alerts in your CGM app."
                 )
+                .font(.subheadline).foregroundStyle(.secondary)
             }
+            .listRowBackground(Color.chart)
             Section("Active Profiles") {
-                ForEach(store.profiles.filter(\.isEnabled)) { profile in profileRow(profile) }
+                ForEach(store.profiles.filter(\.isEnabled)) { profile in profileCard(profile) }
             }
             if store.profiles.contains(where: { !$0.isEnabled }) {
                 Section("Disabled Profiles") {
-                    ForEach(store.profiles.filter { !$0.isEnabled }) { profile in profileRow(profile) }
+                    ForEach(store.profiles.filter { !$0.isEnabled }) { profile in profileCard(profile) }
                 }
             }
         }
+        .listSectionSpacing(24)
         .settingsBackground()
         .navigationTitle("Glucose Alerts")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    var alerts = store.profiles.first(where: \.isFallback)?.alerts ?? alertsStore.alerts
+                    var alerts = store.profiles.first(where: \.isFallback)?.supportedAlerts ?? GlucoseAlertsStore.defaultAlerts()
+                        .filter { $0.type != .carbsRequired }
                     for index in alerts.indices { alerts[index].id = UUID()
                         alerts[index].snoozedUntil = nil }
-                    editing = SettingsAlertProfile(name: String(localized: "New Profile"), alerts: alerts)
+                    editing = SettingsAlertProfile(
+                        name: String(localized: "New Profile"),
+                        schedule: .init(kind: .time),
+                        alerts: alerts
+                    )
                 } label: { Image(systemName: "plus") }
                     .accessibilityLabel("Add Alert Profile")
             }
@@ -47,69 +58,195 @@ struct SettingsAlertProfilesView: View {
         .task { store.start() }
     }
 
-    private func profileRow(_ profile: SettingsAlertProfile) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Button { editing = profile } label: {
-                    HStack {
-                        Text(profile.name).font(.headline)
-                        if store.activeID == profile
-                            .id { Image(systemName: "checkmark.circle.fill").accessibilityLabel("Currently Active") }
-                    }
-                }.buttonStyle(.borderless)
-                Spacer()
-                if !profile.isFallback {
-                    Toggle(profile.name, isOn: Binding(
-                        get: { store.profiles.first { $0.id == profile.id }?.isEnabled ?? false },
-                        set: { store.setEnabled(profile.id, $0) }
-                    )).labelsHidden()
-                }
-            }
-            ForEach(profile.alerts.filter { $0.shouldEvaluate }) { alarm in
-                HStack {
-                    Text(alarm.type == .forecastedLow ? String(localized: "Urgent Low Soon") : alarm.type.displayName)
-                    Spacer()
-                    Text(
-                        alarm.delivery?
-                            .title ??
-                            (alarm.overridesSilenceAndDND ? String(localized: "Alarm") : String(localized: "Time Sensitive"))
-                    )
-                    .foregroundStyle(.secondary)
-                    if alarm.type != .forecastedLow {
-                        Text(
-                            alarm.type == .carbsRequired ? "\(alarm.thresholdMgDL) g" :
-                                alarm.thresholdMgDL.formatted(withUnits: model.units) +
-                                (alarm.type == .fallingFast ? "/min" : "")
-                        )
-                        .foregroundStyle(.secondary)
-                    }
-                }.font(.subheadline)
-            }
-            Button { editing = profile } label: {
-                Label(scheduleDescription(profile), systemImage: profile.schedule.kind == .location ? "location.fill" : "clock")
-                    .font(.caption)
-            }.buttonStyle(.borderless)
+    private func profileCard(_ profile: SettingsAlertProfile) -> some View {
+        SettingsAlertProfileCard(profile: profile, units: model.units, enabled: Binding(
+            get: { store.profiles.first { $0.id == profile.id }?.isEnabled ?? false },
+            set: { store.setEnabled(profile.id, $0) }
+        )) { editing = profile }
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 16, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+    }
+}
+
+struct SettingsAlertProfileCard: View {
+    let profile: SettingsAlertProfile
+    let units: GlucoseUnits
+    @Binding var enabled: Bool
+    let onEdit: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var cardColors: [Color] {
+        if colorScheme == .light {
+            return profile.isEnabled
+                ? [Color(red: 0.78, green: 0.80, blue: 0.94), Color(red: 0.62, green: 0.68, blue: 0.86)]
+                : [Color(red: 0.94, green: 0.95, blue: 0.97), Color(red: 0.85, green: 0.87, blue: 0.90)]
         }
-        .padding(.vertical, 6)
+        return profile.isEnabled
+            ? [Color(red: 0.20, green: 0.25, blue: 0.42), Color(red: 0.08, green: 0.14, blue: 0.22)]
+            : [Color(red: 0.11, green: 0.14, blue: 0.17), Color(red: 0.025, green: 0.055, blue: 0.075)]
     }
 
-    private func scheduleDescription(_ profile: SettingsAlertProfile) -> String {
-        switch profile.schedule.kind {
-        case .always: return profile
-            .isFallback ? String(localized: "When no scheduled profile is active") : String(localized: "Always")
-        case .location: return profile.schedule.locationName
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Button(action: onEdit) {
+                VStack(spacing: 16) {
+                    HStack {
+                        Label(profile.name, systemImage: profile.displaySymbol).font(.headline)
+                        Spacer()
+                        if !profile.isFallback { Color.clear.frame(width: 52, height: 32) }
+                    }
+                    .padding(12)
+                    .modifier(SettingsAlertGlassGroup())
+                    alertGroup([.urgentLow, .low, .high])
+                    alertGroup([.forecastedLow, .fallingFast])
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(profile.scheduleSummary).font(.subheadline)
+                            if !profile.scheduleDetail
+                                .isEmpty { Text(profile.scheduleDetail).font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Spacer()
+                        Image(systemName: profile.schedule.kind == .location ? "location.fill" : "clock.fill")
+                            .foregroundStyle(profile.isEnabled ? Color.accentColor : Color.secondary)
+                    }
+                    .padding(12)
+                    .modifier(SettingsAlertGlassGroup())
+                }
+                .padding(16)
+                .foregroundStyle(profile.isEnabled ? Color.primary : Color.secondary)
+                .background(
+                    LinearGradient(
+                        colors: cardColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 28)
+                )
+                .overlay { RoundedRectangle(cornerRadius: 28).strokeBorder(.white.opacity(0.16), lineWidth: 0.5) }
+                .contentShape(RoundedRectangle(cornerRadius: 28))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit \(profile.name) alert profile")
+            if !profile.isFallback {
+                Toggle(profile.name, isOn: $enabled)
+                    .labelsHidden()
+                    .tint(.accentColor)
+                    .fixedSize()
+                    .padding(.top, 28)
+                    .padding(.trailing, 28)
+            }
+        }
+    }
+
+    @ViewBuilder private func alertGroup(_ types: [GlucoseAlertType]) -> some View {
+        let alerts = types.compactMap { type in profile.supportedAlerts.first { $0.type == type && $0.shouldEvaluate } }
+        if !alerts.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(Array(alerts.enumerated()), id: \.element.id) { index, alarm in
+                    if index > 0 { Divider() }
+                    SettingsAlertSummaryRow(alert: alarm, units: units)
+                        .padding(.vertical, 12)
+                }
+            }
+            .padding(.horizontal, 14)
+            .modifier(SettingsAlertGlassGroup())
+        }
+    }
+}
+
+private struct SettingsAlertGlassGroup: ViewModifier {
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.tint(.white.opacity(0.07)), in: RoundedRectangle(cornerRadius: 18))
+        } else {
+            content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        }
+    }
+}
+
+extension SettingsAlertProfile {
+    var scheduleSummary: String {
+        switch schedule.kind {
+        case .always: return isFallback ? String(localized: "Default") : String(localized: "Always")
+        case .location: return schedule.locationName
         case .time:
-            return "\(clock(profile.schedule.startMinute)) – \(clock(profile.schedule.endMinute))"
+            return "\(clock(schedule.startMinute)) – \(clock(schedule.endMinute))" +
+                (schedule.endMinute <= schedule.startMinute ? String(localized: " (+1 Day)") : "")
+        }
+    }
+
+    var editorScheduleSummary: String {
+        guard schedule.kind == .time else { return scheduleSummary }
+        let minutes = (schedule.endMinute - schedule.startMinute + 1440) % 1440
+        let duration = minutes == 0 ? 1440 : minutes
+        let time = duration % 60 == 0 ? "\(duration / 60) hr" : "\(duration / 60) hr \(duration % 60) min"
+        let repeatTitle = schedule.weekdays.count == 7 ? String(localized: "Daily") : String(localized: "Weekly")
+        return "\(repeatTitle) · \(clock(schedule.startMinute)) · \(time)"
+    }
+
+    var scheduleDetail: String {
+        switch schedule.kind {
+        case .always: return isFallback ? String(localized: "When no scheduled profile is active") : ""
+        case .location: return String(localized: "While at this Location")
+        case .time:
+            if schedule.weekdays.count == 7 { return String(localized: "Every Day") }
+            if schedule.weekdays == Set(2 ... 6) { return String(localized: "Weekdays") }
+            return schedule.weekdays.sorted().map { Calendar.current.shortWeekdaySymbols[$0 - 1] }.joined(separator: ", ")
         }
     }
 
     private func clock(_ minute: Int) -> String {
-        let date = Calendar.current.startOfDay(for: Date()).addingTimeInterval(TimeInterval(minute * 60))
-        return date.formatted(date: .omitted, time: .shortened)
+        Calendar.current.startOfDay(for: Date()).addingTimeInterval(TimeInterval(minute * 60))
+            .formatted(date: .omitted, time: .shortened)
     }
 }
 
-private struct SettingsAlertProfileEditor: View {
+struct SettingsAlertSummaryRow: View {
+    let alert: GlucoseAlert
+    let units: GlucoseUnits
+    var showOff = false
+
+    var body: some View {
+        HStack {
+            Text(alert.type.settingsTitle)
+            Spacer(minLength: 8)
+            if showOff && !alert.shouldEvaluate { Text("Off").foregroundStyle(.secondary) }
+            else {
+                Image(systemName: alert.settingsSoundMode.symbol).accessibilityLabel(alert.settingsSoundMode.title)
+                    .foregroundStyle(.secondary)
+                Text(alert.settingsDelivery.title).foregroundStyle(.secondary)
+                if alert.type == .urgentLow || alert.type == .low || alert.type == .high {
+                    Text("·").foregroundStyle(.secondary)
+                    Text(alert.thresholdMgDL.formatted(withUnits: units).replacingOccurrences(of: " \(units.rawValue)", with: ""))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .font(.subheadline)
+    }
+}
+
+extension GlucoseAlertType {
+    var settingsTitle: String {
+        switch self {
+        case .urgentLow: return String(localized: "Urgent Low")
+        case .low: return String(localized: "Low")
+        case .high: return String(localized: "High")
+        case .forecastedLow: return String(localized: "Urgent Low Soon")
+        case .fallingFast: return String(localized: "Falling Fast")
+        case .carbsRequired: return String(localized: "Carbs Required")
+        }
+    }
+}
+
+extension GlucoseAlert {
+    var settingsDelivery: SettingsAlertDelivery { delivery ?? (overridesSilenceAndDND ? .alarm : .timeSensitive) }
+    var settingsSoundMode: SettingsAlertSoundMode {
+        soundMode ?? (playsSound ? (overridesSilenceAndDND ? .soundAlways : .matchPhone) : .vibrateAlways) }
+}
+
+struct SettingsAlertProfileEditor: View {
     let units: GlucoseUnits
     @ObservedObject var store: SettingsAlertProfilesStore
     @State private var working: SettingsAlertProfile
@@ -126,38 +263,57 @@ private struct SettingsAlertProfileEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") { TextField("Name", text: $working.name) }
-                if !working.isFallback {
-                    Section("Schedule") {
-                        Button { showingSchedule = true } label: {
-                            LabeledContent(
-                                "Schedule",
-                                value: working.schedule.kind == .location ? working.schedule.locationName :
-                                    working.schedule.kind == .time ? String(localized: "Time") : String(localized: "Always")
-                            )
+                Group {
+                    Section("Name") {
+                        NavigationLink {
+                            Form {
+                                Section { TextField("Name", text: $working.name) }.listRowBackground(Color.chart)
+                                Section {
+                                    Picker(
+                                        "Symbol",
+                                        selection: Binding(get: { working.displaySymbol }, set: { working.symbol = $0 })
+                                    ) {
+                                        ForEach(
+                                            [
+                                                "bell.fill",
+                                                "sun.max.fill",
+                                                "moon.fill",
+                                                "briefcase.fill",
+                                                "house.fill",
+                                                "figure.run"
+                                            ],
+                                            id: \.self
+                                        ) { Image(systemName: $0).tag($0) }
+                                    }.pickerStyle(.menu)
+                                }.listRowBackground(Color.chart)
+                            }.settingsBackground().navigationTitle("Name")
+                        } label: { Label(working.name, systemImage: working.displaySymbol) }
+                    }.listRowBackground(Color.chart)
+                    if !working.isFallback {
+                        Section("Schedule") {
+                            Button { showingSchedule = true } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(working.editorScheduleSummary)
+                                        Text(working.scheduleDetail).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: working.schedule.kind == .location ? "location.fill" : "clock.fill")
+                                        .foregroundStyle(Color.accentColor)
+                                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                                }
+                            }.foregroundStyle(Color.primary)
                         }
                     }
-                }
-                Section("Glucose Alerts") {
-                    ForEach(working.alerts) { alarm in
-                        Button { editingAlert = alarm } label: {
-                            LabeledContent(alarm.type.displayName) {
-                                Text(
-                                    alarm
-                                        .shouldEvaluate ? (alarm.delivery?.title ?? String(localized: "Configured")) :
-                                        String(localized: "Off")
-                                )
-                            }
+                    Section("Glucose Alerts") { editorAlertRows([.urgentLow, .low, .high]) }.listRowBackground(Color.chart)
+                    Section { editorAlertRows([.forecastedLow, .fallingFast]) }.listRowBackground(Color.chart)
+                    if !working.isFallback, store.profiles.contains(where: { $0.id == working.id }) {
+                        Section {
+                            Button("Delete Profile", role: .destructive) { store.remove(working)
+                                dismiss() }
                         }
-                        .foregroundStyle(.primary)
                     }
-                }
-                if !working.isFallback, store.profiles.contains(where: { $0.id == working.id }) {
-                    Section {
-                        Button("Delete Profile", role: .destructive) { store.remove(working)
-                            dismiss() }
-                    }
-                }
+                }.listRowBackground(Color.chart)
             }
             .settingsBackground()
             .navigationTitle("Edit Profile")
@@ -184,9 +340,22 @@ private struct SettingsAlertProfileEditor: View {
             }
         }
     }
+
+    @ViewBuilder private func editorAlertRows(_ types: [GlucoseAlertType]) -> some View {
+        ForEach(types, id: \.self) { type in
+            if let alarm = working.supportedAlerts.first(where: { $0.type == type }) {
+                Button { editingAlert = alarm } label: {
+                    HStack {
+                        SettingsAlertSummaryRow(alert: alarm, units: units, showOff: true)
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                    }
+                }.foregroundStyle(Color.primary)
+            }
+        }
+    }
 }
 
-private struct SettingsAlertScheduleEditor: View {
+struct SettingsAlertScheduleEditor: View {
     @ObservedObject var store: SettingsAlertProfilesStore
     let onSave: (SettingsAlertSchedule) -> Void
     @State private var working: SettingsAlertSchedule
@@ -198,81 +367,103 @@ private struct SettingsAlertScheduleEditor: View {
     init(initial: SettingsAlertSchedule, store: SettingsAlertProfilesStore, onSave: @escaping (SettingsAlertSchedule) -> Void) {
         self.store = store
         self.onSave = onSave
+        var initial = initial
+        if initial.kind == .always { initial.kind = .time }
         _working = State(initialValue: initial)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("Configuration", selection: $working.kind) {
-                        Text("Always").tag(SettingsAlertSchedule.Kind.always)
-                        Text("Time").tag(SettingsAlertSchedule.Kind.time)
-                        Text("Location").tag(SettingsAlertSchedule.Kind.location)
-                    }.pickerStyle(.segmented)
-                } footer: {
-                    SettingsHelpFooter(
-                        title: "Schedule",
-                        text: "Automatically activate this profile at a scheduled time or location. If schedules overlap, location-based schedules take priority.",
-                        detail: "Within the same schedule type, the first matching profile in the list takes priority. The Default profile applies when no scheduled profile is active. An overnight schedule belongs to the day on which it starts. Time schedules follow your device's current time zone."
-                    )
-                }
-                if working.kind == .time {
+                Group {
                     Section {
-                        DatePicker("Start", selection: minuteBinding(\.startMinute), displayedComponents: .hourAndMinute)
-                        DatePicker("End", selection: minuteBinding(\.endMinute), displayedComponents: .hourAndMinute)
-                    }
-                    Section("Repeat") {
-                        ForEach(1 ... 7, id: \.self) { day in
-                            Toggle(Calendar.current.weekdaySymbols[day - 1], isOn: Binding(
-                                get: { working.weekdays.contains(day) },
-                                set: { if $0 { working.weekdays.insert(day) } else { working.weekdays.remove(day) } }
-                            ))
-                        }
-                    }
-                }
-                if working.kind == .location {
-                    Section {
-                        TextField("Search Locations", text: $query).submitLabel(.search)
-                            .onSubmit { Task { await searchPlaces() } }
-                        ForEach(Array(places.enumerated()), id: \.offset) { _, place in
-                            Button(place.name ?? String(localized: "Location")) {
-                                working.locationName = place.name ?? query
-                                working.latitude = place.placemark.coordinate.latitude
-                                working.longitude = place.placemark.coordinate.longitude
-                                places = []
-                            }
-                        }
-                        if let searchError { Text(searchError).foregroundStyle(.secondary) }
-                    }
-                    if !working.locationName.isEmpty {
-                        Section {
-                            TextField("Location Name", text: $working.locationName)
-                            Map(initialPosition: .region(MKCoordinateRegion(
-                                center: CLLocationCoordinate2D(latitude: working.latitude, longitude: working.longitude),
-                                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                            ))) {
-                                MapCircle(
-                                    center: CLLocationCoordinate2D(latitude: working.latitude, longitude: working.longitude),
-                                    radius: working.radius
-                                ).foregroundStyle(Color.accentColor.opacity(0.2))
-                            }
-                            .frame(height: 220)
-                            Stepper("Radius: \(Int(working.radius)) m", value: $working.radius, in: 100 ... 2000, step: 100)
-                        }
-                    }
-                    Section {
-                        Button("Enable Location Profiles") { store.requestLocationAccess() }
-                        if store.locationAuthorization == .authorizedWhenInUse {
-                            Button("Allow Background Location") { store.requestLocationAccess() }
-                        }
-                        if let error = store.locationError { Text(error).foregroundStyle(.secondary) }
+                        Picker("Configuration", selection: $working.kind) {
+                            Text("Time").tag(SettingsAlertSchedule.Kind.time)
+                            Text("Location").tag(SettingsAlertSchedule.Kind.location)
+                        }.pickerStyle(.segmented)
                     } footer: {
-                        Text(
-                            "Location profiles use region entry and exit events. Allow Always location access for automatic activation while Trio is in the background."
+                        SettingsHelpFooter(
+                            title: "Schedule",
+                            text: "Automatically activate this profile at a scheduled time or location. If schedules overlap, location-based schedules take priority.",
+                            detail: "Within the same schedule type, the first matching profile in the list takes priority. The Default profile applies when no scheduled profile is active. An overnight schedule belongs to the day on which it starts. Time schedules follow your device's current time zone."
                         )
                     }
-                }
+                    if working.kind == .time {
+                        Section {
+                            DatePicker("Start", selection: minuteBinding(\.startMinute), displayedComponents: .hourAndMinute)
+                            DatePicker("End", selection: minuteBinding(\.endMinute), displayedComponents: .hourAndMinute)
+                        }
+                        Section {
+                            Picker("Repeat", selection: repeatSelection) {
+                                Text("Daily").tag("daily")
+                                Text("Weekdays").tag("weekdays")
+                                Text("Weekends").tag("weekends")
+                                Text("Weekly").tag("weekly")
+                            }.pickerStyle(.menu)
+                            HStack {
+                                ForEach(1 ... 7, id: \.self) { day in
+                                    Button {
+                                        if working.weekdays.contains(day) { working.weekdays.remove(day) }
+                                        else { working.weekdays.insert(day) }
+                                    } label: { Text(Calendar.current.veryShortWeekdaySymbols[day - 1]).frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .buttonBorderShape(.circle)
+                                    .tint(working.weekdays.contains(day) ? Color.accentColor : Color.secondary.opacity(0.3))
+                                    .accessibilityLabel(Calendar.current.weekdaySymbols[day - 1])
+                                    .accessibilityAddTraits(working.weekdays.contains(day) ? .isSelected : [])
+                                }
+                            }
+                        } footer: {
+                            Text(
+                                working.weekdays.sorted().map { Calendar.current.shortWeekdaySymbols[$0 - 1] }
+                                    .joined(separator: ", ")
+                            ) }
+                            .listRowBackground(Color.chart)
+                    }
+                    if working.kind == .location {
+                        Section {
+                            TextField("Search Locations", text: $query).submitLabel(.search)
+                                .onSubmit { Task { await searchPlaces() } }
+                            ForEach(Array(places.enumerated()), id: \.offset) { _, place in
+                                Button(place.name ?? String(localized: "Location")) {
+                                    working.locationName = place.name ?? query
+                                    working.latitude = place.placemark.coordinate.latitude
+                                    working.longitude = place.placemark.coordinate.longitude
+                                    places = []
+                                }
+                            }
+                            if let searchError { Text(searchError).foregroundStyle(.secondary) }
+                        }
+                        if !working.locationName.isEmpty {
+                            Section {
+                                TextField("Location Name", text: $working.locationName)
+                                Map(initialPosition: .region(MKCoordinateRegion(
+                                    center: CLLocationCoordinate2D(latitude: working.latitude, longitude: working.longitude),
+                                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                ))) {
+                                    MapCircle(
+                                        center: CLLocationCoordinate2D(latitude: working.latitude, longitude: working.longitude),
+                                        radius: working.radius
+                                    ).foregroundStyle(Color.accentColor.opacity(0.2))
+                                }
+                                .frame(height: 220)
+                                Stepper("Radius: \(Int(working.radius)) m", value: $working.radius, in: 100 ... 2000, step: 100)
+                            }
+                        }
+                        Section {
+                            Button("Enable Location Profiles") { store.requestLocationAccess() }
+                            if store.locationAuthorization == .authorizedWhenInUse {
+                                Button("Allow Background Location") { store.requestLocationAccess() }
+                            }
+                            if let error = store.locationError { Text(error).foregroundStyle(.secondary) }
+                        } footer: {
+                            Text(
+                                "Location profiles use region entry and exit events. Allow Always location access for automatic activation while Trio is in the background."
+                            )
+                        }
+                    }
+                }.listRowBackground(Color.chart)
             }
             .settingsBackground()
             .navigationTitle("Schedule")
@@ -294,6 +485,22 @@ private struct SettingsAlertScheduleEditor: View {
         }
     }
 
+    private var repeatSelection: Binding<String> {
+        Binding(get: {
+            if working.weekdays == Set(1 ... 7) { return "daily" }
+            if working.weekdays == Set(2 ... 6) { return "weekdays" }
+            if working.weekdays == Set([1, 7]) { return "weekends" }
+            return "weekly"
+        }, set: { value in
+            switch value {
+            case "daily": working.weekdays = Set(1 ... 7)
+            case "weekdays": working.weekdays = Set(2 ... 6)
+            case "weekends": working.weekdays = [1, 7]
+            default: break
+            }
+        })
+    }
+
     private func minuteBinding(_ key: WritableKeyPath<SettingsAlertSchedule, Int>) -> Binding<Date> {
         Binding(get: {
             Calendar.current.startOfDay(for: Date()).addingTimeInterval(TimeInterval(working[keyPath: key] * 60))
@@ -311,7 +518,7 @@ private struct SettingsAlertScheduleEditor: View {
     }
 }
 
-private struct SettingsProfileAlertEditor: View {
+struct SettingsProfileAlertEditor: View {
     let units: GlucoseUnits
     let onSave: (GlucoseAlert) -> Void
     @State private var working: GlucoseAlert
@@ -327,101 +534,63 @@ private struct SettingsProfileAlertEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Configuration") {
-                    if working.type != .urgentLow { Toggle("Enabled", isOn: $working.isEnabled) }
-                    if working.type == .fallingFast {
-                        SettingsNumberRow(
-                            title: "Fall Rate",
-                            value: $working.thresholdMgDL,
-                            spec: thresholdSpec,
-                            units: units,
-                            suffix: units == .mmolL ? "mmol/L/min" : "mg/dL/min",
-                            displayTransform: { units == .mmolL ? $0.asMmolL : $0 }, presentation: .wheel
-                        )
-                    } else if working.type != .forecastedLow {
-                        SettingsNumberRow(
-                            title: working.type == .carbsRequired ? "Carbs" : "Glucose",
-                            value: $working.thresholdMgDL, spec: thresholdSpec, units: units, presentation: .wheel
-                        )
-                    }
-                    SettingsAlertDeliveryRow(selection: Binding(
-                        get: { working.delivery ?? (working.overridesSilenceAndDND ? .alarm : .timeSensitive) },
-                        set: {
-                            working.delivery = $0
-                            working.overridesSilenceAndDND = $0 != .timeSensitive
-                            if $0 == .timeSensitive, working.soundMode == .soundAlways {
-                                working.soundMode = .matchPhone
-                            }
-                            if $0 == .alarm { Task { await CriticalAlertAlarmScheduler.requestAuthorization() } }
+                Group {
+                    Section("Configuration") {
+                        if working.type == .forecastedLow {
+                            Toggle("Urgent Low Soon", isOn: $working.isEnabled)
+                        } else {
+                            SettingsNumberRow(
+                                title: working.type.settingsTitle,
+                                value: thresholdSelection,
+                                spec: thresholdSpec,
+                                units: units,
+                                suffix: working.type == .fallingFast ? (units == .mmolL ? "mmol/L/min" : "mg/dL/min") : nil,
+                                includeOff: working.type != .urgentLow,
+                                displayTransform: { working.type == .fallingFast && units == .mmolL ? $0.asMmolL : $0 },
+                                presentation: .wheel
+                            )
                         }
-                    ))
-                    NavigationLink {
-                        Form {
-                            Picker("Sound or Vibrate", selection: Binding(
-                                get: {
-                                    working
-                                        .soundMode ??
-                                        (
-                                            working
-                                                .playsSound ? (working.overridesSilenceAndDND ? .soundAlways : .matchPhone) :
-                                                .vibrateAlways
-                                        )
-                                },
-                                set: { working.soundMode = $0
-                                    working.playsSound = $0 != .vibrateAlways }
-                            )) {
-                                ForEach(SettingsAlertSoundMode.allCases) { mode in
-                                    Label(mode.title, systemImage: mode.symbol).tag(mode)
-                                        .disabled(
-                                            mode == .soundAlways &&
-                                                (
-                                                    working
-                                                        .delivery ?? (working.overridesSilenceAndDND ? .alarm : .timeSensitive)
-                                                ) ==
-                                                .timeSensitive
-                                        )
+                    }.listRowBackground(Color.chart)
+                    Section {
+                        SettingsAlertDeliveryRow(selection: Binding(
+                            get: { working.delivery ?? (working.overridesSilenceAndDND ? .alarm : .timeSensitive) },
+                            set: {
+                                working.delivery = $0
+                                working.overridesSilenceAndDND = $0 != .timeSensitive
+                                if $0 == .timeSensitive, working.soundMode == .soundAlways {
+                                    working.soundMode = .matchPhone
                                 }
-                            }.pickerStyle(.inline).labelsHidden()
-                            Section {
-                                Text(
-                                    "Sound Always requires Critical or Alarm delivery. Notification and haptic behavior also follows the permissions granted in iOS Settings."
-                                )
+                                if $0 == .alarm { Task { await CriticalAlertAlarmScheduler.requestAuthorization() } }
                             }
-                        }.settingsBackground().navigationTitle("Sound or Vibrate")
-                    } label: {
-                        LabeledContent(
-                            "Sound",
-                            value: working.soundMode?
-                                .title ??
-                                (working.playsSound ? String(localized: "Configured") : String(localized: "Vibrate Always"))
+                        ))
+                        NavigationLink {
+                            SettingsAlertSoundView(
+                                mode: soundSelection,
+                                filename: $working.soundFilename,
+                                delivery: working.settingsDelivery
+                            )
+                        } label: { LabeledContent("Sound", value: working.settingsSoundMode.title) }
+                    }.listRowBackground(Color.chart)
+
+                    Section {
+                        SettingsNumberRow(
+                            title: "Alert Snooze",
+                            value: Binding(get: { Decimal(working.snoozeMinutes ?? 15) }, set: {
+                                working.snoozeMinutes = NSDecimalNumber(decimal: $0).intValue
+                            }),
+                            spec: PickerSetting(value: 15, step: 5, min: 5, max: 60, type: .minute),
+                            presentation: .wheel
+                        )
+                    } footer: {
+                        SettingsHelpFooter(
+                            title: "Alert Snooze",
+                            text: "How long to wait after this alert is acknowledged before sending another alert for this same condition."
                         )
                     }
-                    if working.playsSound {
-                        Picker("Sound", selection: $working.soundFilename) {
-                            ForEach(AlarmSoundCatalog.allFilenames, id: \.self) {
-                                Text(AlarmSoundCatalog.displayName(for: $0)).tag($0) }
-                        }
-                        Button("Preview Sound", systemImage: "play.circle") { previewer.toggle(filename: working.soundFilename) }
-                    }
-                }
-                Section {
-                    SettingsNumberRow(
-                        title: "Alert Snooze",
-                        value: Binding(get: { Decimal(working.snoozeMinutes ?? 15) }, set: {
-                            working.snoozeMinutes = NSDecimalNumber(decimal: $0).intValue
-                        }),
-                        spec: PickerSetting(value: 15, step: 5, min: 5, max: 60, type: .minute),
-                        presentation: .wheel
-                    )
-                } footer: {
-                    SettingsHelpFooter(
-                        title: "Alert Snooze",
-                        text: "How long to wait after this alert is acknowledged before sending another alert for this same condition."
-                    )
-                }
+                }.listRowBackground(Color.chart)
             }
             .settingsBackground()
-            .navigationTitle(working.type.displayName)
+            .navigationTitle(working.type == .low ? String(localized: "Low Glucose Alert") : working.type.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -436,6 +605,21 @@ private struct SettingsProfileAlertEditor: View {
         }
     }
 
+    private var thresholdSelection: Binding<Decimal> {
+        Binding(get: { working.shouldEvaluate ? working.thresholdMgDL : 0 }, set: { value in
+            guard value > 0 || working.type != .urgentLow else { return }
+            working.isEnabled = value > 0
+            if value > 0 { working.thresholdMgDL = value }
+        })
+    }
+
+    private var soundSelection: Binding<SettingsAlertSoundMode> {
+        Binding(get: { working.settingsSoundMode }, set: { mode in
+            working.soundMode = mode
+            working.playsSound = mode != .vibrateAlways
+        })
+    }
+
     private var thresholdSpec: PickerSetting {
         switch working.type {
         case .urgentLow: return PickerSetting(value: 54, step: 1, min: 54, max: 80, type: .glucose)
@@ -444,6 +628,77 @@ private struct SettingsProfileAlertEditor: View {
         case .high: return PickerSetting(value: 270, step: 1, min: 100, max: 400, type: .glucose)
         case .carbsRequired: return PickerSetting(value: 10, step: 1, min: 5, max: 50, type: .gram)
         case .fallingFast: return PickerSetting(value: 2, step: 0.5, min: 0.5, max: 10, type: .glucose)
+        }
+    }
+}
+
+struct SettingsAlertSoundView: View {
+    @Binding var mode: SettingsAlertSoundMode
+    @Binding var filename: String
+    let delivery: SettingsAlertDelivery
+    @StateObject private var previewer = SoundPreviewPlayer()
+
+    var body: some View {
+        Form {
+            Section {
+                SettingsHelpFooter(
+                    title: "Sound or Vibrate",
+                    text: "Sound Always is not available for Time Sensitive alerts as they cannot override Silent mode."
+                )
+                .font(.subheadline).foregroundStyle(.secondary)
+            }.listRowBackground(Color.chart)
+            Section {
+                ForEach(SettingsAlertSoundMode.allCases) { choice in
+                    Button { mode = choice } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label(choice.title, systemImage: choice.symbol).font(.headline)
+                                Text(choice.detail).font(.subheadline).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            if mode == choice { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                        }.padding(.vertical, 8)
+                    }
+                    .foregroundStyle(Color.primary)
+                    .disabled(choice == .soundAlways && delivery == .timeSensitive)
+                }
+            }.listRowBackground(Color.chart)
+            if mode != .vibrateAlways {
+                Section {
+                    NavigationLink {
+                        Form {
+                            Section {
+                                Picker("Sound", selection: $filename) {
+                                    ForEach(AlarmSoundCatalog.allFilenames, id: \.self) {
+                                        Text(AlarmSoundCatalog.displayName(for: $0)).tag($0) }
+                                }.pickerStyle(.inline).labelsHidden()
+                            }.listRowBackground(Color.chart)
+                            Section {
+                                Button("Preview Sound", systemImage: "play.circle") { previewer.toggle(filename: filename) }
+                            }.listRowBackground(Color.chart)
+                        }
+                        .settingsBackground()
+                        .navigationTitle("Sound")
+                        .onDisappear { previewer.stop() }
+                    } label: { LabeledContent("Sound", value: AlarmSoundCatalog.displayName(for: filename)) }
+                }.listRowBackground(Color.chart)
+            }
+        }
+        .settingsBackground()
+        .navigationTitle("Sound or Vibrate")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension SettingsAlertSoundMode {
+    var detail: String {
+        switch self {
+        case .soundAlways: return String(localized: "This alert will play a sound, even when your phone is set to Silent.")
+        case .vibrateAlways: return String(localized: "This alert will vibrate without sound, even when your phone is set to Ring.")
+        case .matchPhone: return String(
+                localized: "When your phone is set to Ring, this alert will play a sound. When your phone is set to Silent, this alert will vibrate."
+            )
         }
     }
 }

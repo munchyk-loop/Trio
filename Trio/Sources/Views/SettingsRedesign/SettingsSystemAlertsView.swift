@@ -87,24 +87,68 @@ struct SettingsAlertDeliveryRow: View {
 
     var body: some View {
         NavigationLink {
-            Form {
-                Section {
-                    Picker("Delivery", selection: $selection) {
-                        ForEach(SettingsAlertDelivery.allCases.filter { allowsTimeSensitive || $0 != .timeSensitive }) {
-                            Text($0.title).tag($0)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                } footer: {
-                    Text(
-                        "Time Sensitive notifications can override Focus, but follow Silent mode. Critical notifications can override Focus and Silent mode. Alarms continue until dismissed."
-                    )
-                }
-                .listRowBackground(Color.chart)
-            }
-            .settingsBackground()
-            .navigationTitle("Delivery")
-            .navigationBarTitleDisplayMode(.inline)
+            SettingsAlertDeliveryView(selection: $selection, allowsTimeSensitive: allowsTimeSensitive)
         } label: { LabeledContent("Delivery", value: selection.title) }
+    }
+}
+
+struct SettingsAlertDeliveryView: View {
+    @Binding var selection: SettingsAlertDelivery
+    var allowsTimeSensitive = true
+
+    var body: some View {
+        Form {
+            Section("Configuration") {
+                ForEach(SettingsAlertDelivery.allCases.filter { allowsTimeSensitive || $0 != .timeSensitive }) { delivery in
+                    Button { selection = delivery } label: {
+                        HStack(alignment: .center, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label { Text(delivery.title) } icon: {
+                                    Image(systemName: delivery.symbol).foregroundStyle(delivery.iconColor)
+                                }
+                                .font(.headline)
+                                Text(delivery.detail).font(.subheadline).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer(minLength: 0)
+                            if selection == delivery { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                        }.padding(.vertical, 8)
+                    }.foregroundStyle(Color.primary)
+                }
+            }.listRowBackground(Color.chart)
+        }
+        .settingsBackground()
+        .navigationTitle("Delivery")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension SettingsAlertDelivery {
+    var symbol: String {
+        switch self {
+        case .timeSensitive: return "clock.fill"
+        case .critical: return "exclamationmark.triangle.fill"
+        case .alarm: return "alarm.fill"
+        }
+    }
+
+    var iconColor: Color {
+        switch self {
+        case .timeSensitive: return .yellow
+        case .critical: return .red
+        case .alarm: return .orange
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .timeSensitive: return String(
+                localized: "A momentary banner that appears on screen briefly. Prioritized at the top of Notification Center. Can override Focus, but cannot override Silent mode."
+            )
+        case .critical: return String(
+                localized: "A persistent banner that remains on screen until dismissed. Creates a more noticeable interruption. Prioritized at the top of Notification Center. Can override Focus and Silent mode."
+            )
+        case .alarm: return String(localized: "A full-screen alarm that continues alerting until dismissed. Can override Focus and Silent mode.")
+        }
     }
 }

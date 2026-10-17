@@ -89,50 +89,53 @@ struct TrioCloudBackupView: View {
 
     private var backupList: some View {
         List {
-            Section {
-                Button {
-                    guard operation == nil, presentation == nil, !importing else { return }
-                    name = ""
-                    naming = true
-                } label: {
-                    HStack {
-                        Text("Back Up Now")
-                        Spacer()
-                        Image(systemName: "icloud.and.arrow.up").accessibilityHidden(true)
+            Group {
+                Section {
+                    Button {
+                        guard operation == nil, presentation == nil, !importing else { return }
+                        name = ""
+                        naming = true
+                    } label: {
+                        HStack {
+                            Text("Back Up Now")
+                            Spacer()
+                            Image(systemName: "icloud.and.arrow.up").accessibilityHidden(true)
+                        }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
+                    .buttonStyle(.borderless)
+                    .disabled(operation == .backup)
+                } header: { Text("iCloud Backup") } footer: {
+                    Text(
+                        lastBackup
+                            .map { "Last successful backup: \($0.formatted(date: .abbreviated, time: .shortened))" } ??
+                            "No recent backups."
+                    )
                 }
-                .buttonStyle(.borderless)
-                .disabled(operation == .backup)
-            } header: { Text("iCloud Backup") } footer: {
-                Text(
-                    lastBackup
-                        .map { "Last successful backup: \($0.formatted(date: .abbreviated, time: .shortened))" } ??
-                        "No recent backups."
-                )
-            }
-            Section {
-                NavigationLink("View Backups") { TrioCloudBackupBrowser() }
-            }
-            Section {
-                NavigationLink("Configuration") { TrioCloudBackupConfigurationView() }
-            }
-            Section("Local Backup") {
-                Button("Export Backup File") {
-                    Task { await perform(.export) {
-                        presentation = .exported(TrioCloudBackupFile(
-                            url: try await TrioCloudBackupCoordinator.shared.exportBackupFile()
-                        ))
-                    } }
+                Section {
+                    NavigationLink("View Backups") { TrioCloudBackupBrowser() }
                 }
-                .buttonStyle(.borderless)
-                .disabled(operation == .export)
-                Button("Import Backup File") {
-                    guard operation == nil, presentation == nil, !importing else { return }
-                    importing = true
+                Section {
+                    NavigationLink("Configuration") { TrioCloudBackupConfigurationView() }
                 }
-                .buttonStyle(.borderless)
-            }
+                Section("Local Backup") {
+                    Button("Export Backup File") {
+                        Task { await perform(.export) {
+                            presentation = .exported(TrioCloudBackupFile(
+                                url: try await TrioCloudBackupCoordinator.shared.exportBackupFile()
+                            ))
+                        } }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(operation == .export)
+                    Button("Import Backup File") {
+                        guard operation == nil, presentation == nil, !importing else { return }
+                        importing = true
+                    }
+                    .buttonStyle(.borderless)
+                }
+
+            }.listRowBackground(Color.chart)
         }
 
         .listSectionSpacing(sectionSpacing)

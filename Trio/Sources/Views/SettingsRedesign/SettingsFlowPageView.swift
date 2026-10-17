@@ -739,20 +739,7 @@ struct SettingsFlowPageView: View {
                 }
             }
             Section {
-                SettingsNumberRow(
-                    title: "Lower Limit",
-                    value: model.setting(\.low),
-                    spec: specs.low,
-                    units: model.units,
-                    presentation: .wheel
-                )
-                SettingsNumberRow(
-                    title: "Upper Limit",
-                    value: model.setting(\.high),
-                    spec: specs.high,
-                    units: model.units,
-                    presentation: .wheel
-                )
+                SettingsGlucoseRangeRow(lower: model.setting(\.low), upper: model.setting(\.high), units: model.units)
                 Toggle("Range Graph Lines", isOn: model.setting(\.rulerMarks))
             } header: { Text("Glucose") } footer: {
                 help(

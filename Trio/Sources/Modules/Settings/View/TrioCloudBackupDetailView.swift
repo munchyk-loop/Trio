@@ -38,35 +38,38 @@ struct TrioCloudBackupDetailView: View {
 
     private var backupList: some View {
         List {
-            Section("Info") {
-                LabeledContent("Name", value: entry.name ?? (entry.origin == .manual ? "Manual Backup" : "Automatic Backup"))
-                LabeledContent("Created", value: entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                LabeledContent("App Version", value: backup?.appVersion ?? entry.appVersion ?? "—")
-            }
-            if let backup {
-                let nodes = BackupSettingsNode.make(from: backup)
-                Section("Contents") {
-                    ForEach(nodes) { node in
-                        NavigationLink {
-                            BackupSettingsPreviewView(node: node)
-                        } label: { Text(LocalizedStringKey(node.title)) }
+            Group {
+                Section("Info") {
+                    LabeledContent("Name", value: entry.name ?? (entry.origin == .manual ? "Manual Backup" : "Automatic Backup"))
+                    LabeledContent("Created", value: entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    LabeledContent("App Version", value: backup?.appVersion ?? entry.appVersion ?? "—")
+                }
+                if let backup {
+                    let nodes = BackupSettingsNode.make(from: backup)
+                    Section("Contents") {
+                        ForEach(nodes) { node in
+                            NavigationLink {
+                                BackupSettingsPreviewView(node: node)
+                            } label: { Text(LocalizedStringKey(node.title)) }
+                        }
+                    }
+                    Section {
+                        VStack {
+                            restoreButton
+                            if allowsExport && onSelectForOnboarding == nil { exportButton }
+                        }
+                        .padding(.top, 12)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                    }.listRowBackground(Color.clear)
+                } else {
+                    Section {
+                        if loading { ProgressView("Loading backup…") }
+                        else { Text("This backup couldn’t be opened.").foregroundStyle(.secondary) }
                     }
                 }
-                Section {
-                    VStack {
-                        restoreButton
-                        if allowsExport && onSelectForOnboarding == nil { exportButton }
-                    }
-                    .padding(.top, 12)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                }.listRowBackground(Color.clear)
-            } else {
-                Section {
-                    if loading { ProgressView("Loading backup…") }
-                    else { Text("This backup couldn’t be opened.").foregroundStyle(.secondary) }
-                }
-            }
+
+            }.listRowBackground(Color.chart)
         }
         .disabled(restoring)
         .listSectionSpacing(sectionSpacing)

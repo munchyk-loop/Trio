@@ -42,7 +42,7 @@ struct TrioCloudBackupBrowser: View {
                                         if entry.id != entries.last?.id { Divider().padding(.horizontal) }
                                     }
                                 }
-                                .background(Color.chart.opacity(0.65))
+                                .background(Color.chart)
                                 .cornerRadius(10)
                             }
                         }
@@ -50,18 +50,21 @@ struct TrioCloudBackupBrowser: View {
                 }
             } else {
                 List {
-                    status
-                    ForEach(sectionOrder, id: \.self) { origin in
-                        Section(sectionTitle(origin)) {
-                            let entries = backups.filter { $0.origin == origin }
-                            ForEach(entries) { entry in
-                                backupRow(entry)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) { managementActions(entry) }
-                                    .contextMenu { managementActions(entry, inContextMenu: true) }
+                    Group {
+                        status
+                        ForEach(sectionOrder, id: \.self) { origin in
+                            Section(sectionTitle(origin)) {
+                                let entries = backups.filter { $0.origin == origin }
+                                ForEach(entries) { entry in
+                                    backupRow(entry)
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) { managementActions(entry) }
+                                        .contextMenu { managementActions(entry, inContextMenu: true) }
+                                }
+                                if entries.isEmpty && !loading { Text("No backups found").foregroundStyle(.secondary) }
                             }
-                            if entries.isEmpty && !loading { Text("No backups found").foregroundStyle(.secondary) }
                         }
-                    }
+
+                    }.listRowBackground(Color.chart)
                 }
                 .listSectionSpacing(sectionSpacing)
 

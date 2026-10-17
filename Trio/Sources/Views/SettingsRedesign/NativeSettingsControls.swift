@@ -38,6 +38,7 @@ struct SettingsHelpFooter: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button { showingHelp = true } label: {
                 Image(systemName: "info.circle")
+                    .foregroundStyle(Color.accentColor)
                     .font(.body)
                     .frame(minWidth: 32, minHeight: 32)
                     .contentShape(Rectangle())
@@ -152,12 +153,9 @@ struct SettingsNumberRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
-            .sheet(isPresented: $showingWheel) {
-                NavigationStack {
-                    wheelContent
-                }
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
+            .popover(isPresented: $showingWheel, attachmentAnchor: .rect(.bounds)) {
+                wheelContent
+                    .presentationCompactAdaptation(.popover)
             }
         }
     }
@@ -180,19 +178,12 @@ struct SettingsNumberRow: View {
     }
 
     var wheelContent: some View {
-        Form {
-            Section { picker.pickerStyle(.wheel).labelsHidden() }
-                .listRowBackground(Color.chart)
-        }
-        .settingsBackground()
-        .navigationTitle(LocalizedStringKey(title))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button { showingWheel = false } label: { Image(systemName: "checkmark") }
-                    .accessibilityLabel("Done")
-            }
-        }
+        picker
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(width: 280, height: 216)
+            .padding(.horizontal, 8)
+            .accessibilityLabel(LocalizedStringKey(title))
     }
 
     private var settingDescription: String {
@@ -220,6 +211,62 @@ struct SettingsNumberRow: View {
                 Text(formatted(value)).tag(value)
             }
         }
+    }
+}
+
+struct SettingsGlucoseRangeRow: View {
+    @Binding var lower: Decimal
+    @Binding var upper: Decimal
+    let units: GlucoseUnits
+    @State private var showingPicker = false
+
+    var body: some View {
+        Button { showingPicker = true } label: {
+            LabeledContent("Range") {
+                Text("\(number(lower)) – \(number(upper)) \(units.rawValue)").foregroundStyle(Color.accentColor)
+            }
+            .foregroundStyle(Color.primary)
+        }
+        .buttonStyle(.borderless)
+        .popover(isPresented: $showingPicker, attachmentAnchor: .rect(.bounds)) {
+            pickerContent.presentationCompactAdaptation(.popover)
+        }
+    }
+
+    var pickerContent: some View {
+        HStack(spacing: 0) {
+            Picker("Lower Limit", selection: $lower) {
+                ForEach(values(lower: true), id: \.self) { Text(number($0)).tag($0) }
+            }
+            .accessibilityLabel("Lower Limit")
+            .frame(width: 130)
+            .clipped()
+            Text("–").font(.title3).accessibilityHidden(true)
+            Picker("Upper Limit", selection: $upper) {
+                ForEach(values(lower: false), id: \.self) { Text(number($0)).tag($0) }
+            }
+            .accessibilityLabel("Upper Limit")
+            .frame(width: 130)
+            .clipped()
+        }
+        .pickerStyle(.wheel)
+        .labelsHidden()
+        .frame(height: 216)
+        .padding(.horizontal, 8)
+    }
+
+    private func values(lower isLower: Bool) -> [Decimal] {
+        let spec = isLower ? PickerSettingsProvider.shared.settings.low : PickerSettingsProvider.shared.settings.high
+        let current = isLower ? lower : upper
+        var values = PickerSettingsProvider.shared.generatePickerValues(from: spec, units: units)
+        if !values.contains(current) { values.append(current) }
+        return values.filter { $0 == current || (isLower ? $0 < upper : $0 > lower) }.sorted()
+    }
+
+    private func number(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.maximumFractionDigits = units == .mmolL ? 1 : 0
+        return formatter.string(from: (units == .mmolL ? value.asMmolL : value) as NSDecimalNumber) ?? ""
     }
 }
 

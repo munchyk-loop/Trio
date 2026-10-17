@@ -48,7 +48,7 @@ import UIKit
     static func defaultProfiles() -> [SettingsAlertProfile] {
         [SettingsAlertProfile(
             name: String(localized: "Default"), isFallback: true,
-            alerts: GlucoseAlertsStore.defaultAlerts()
+            alerts: GlucoseAlertsStore.defaultAlerts().filter { $0.type != .carbsRequired }
         )]
     }
 
@@ -84,6 +84,9 @@ import UIKit
 
     func save(_ profile: SettingsAlertProfile) {
         guard !profile.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        var profile = profile
+        profile.alerts = profile.supportedAlerts
+        alertsStore.configuration.forceTrioAlertsWhenCGMProvidesOwn = true
         if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
             if profiles[index].schedule != profile.schedule || profiles[index].isEnabled != profile.isEnabled {
                 insideLocations.remove(profile.id)
@@ -105,6 +108,7 @@ import UIKit
     }
 
     func setEnabled(_ id: UUID, _ enabled: Bool) {
+        if enabled { alertsStore.configuration.forceTrioAlertsWhenCGMProvidesOwn = true }
         guard var profile = profiles.first(where: { $0.id == id }), !profile.isFallback else { return }
         profile.isEnabled = enabled
         save(profile)
@@ -117,7 +121,7 @@ import UIKit
         ), force || activeID != selected.id else { return }
         activeID = selected.id
         applying = true
-        alertsStore.alerts = selected.alerts
+        alertsStore.alerts = selected.supportedAlerts
         applying = false
     }
 

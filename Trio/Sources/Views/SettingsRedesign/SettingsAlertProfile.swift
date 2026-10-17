@@ -16,7 +16,7 @@ enum SettingsAlertSoundMode: String, Codable, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .soundAlways: return "speaker.wave.2.fill"
-        case .vibrateAlways: return "iphone.radiowaves.left.and.right"
+        case .vibrateAlways: return "speaker.slash.fill"
         case .matchPhone: return "iphone"
         }
     }
@@ -85,10 +85,20 @@ struct SettingsAlertSchedule: Codable, Equatable {
 struct SettingsAlertProfile: Identifiable, Codable, Equatable {
     var id = UUID()
     var name = ""
+    var symbol: String? = nil
     var isEnabled = true
     var isFallback = false
     var schedule = SettingsAlertSchedule()
     var alerts: [GlucoseAlert] = []
+
+    var displaySymbol: String {
+        if let symbol { return symbol }
+        if schedule.kind == .location { return "briefcase.fill" }
+        if schedule.kind == .time { return schedule.startMinute >= 18 * 60 ? "moon.fill" : "sun.max.fill" }
+        return "bell.fill"
+    }
+
+    var supportedAlerts: [GlucoseAlert] { alerts.filter { $0.type != .carbsRequired } }
 
     static func selected(
         from profiles: [Self], at date: Date, insideLocations: Set<UUID>,
