@@ -43,34 +43,37 @@ struct SettingsSystemAlertsView: View {
     @State private var working = SettingsSystemAlertPreferences.current
     var body: some View {
         Form {
-            Section {
-                Text("For your safety, urgent System Alerts cannot be turned off.").foregroundStyle(.secondary)
-            }
-            Section("Urgent Alerts") {
-                Toggle("Algorithm", isOn: .constant(true)).disabled(true)
-                Toggle("Insulin Pump", isOn: .constant(true)).disabled(true)
-                Toggle("CGM", isOn: .constant(true)).disabled(true)
-                SettingsAlertDeliveryRow(selection: Binding(
-                    get: { working.urgentDelivery ?? .alarm }, set: { working.urgentDelivery = $0 }
-                ), allowsTimeSensitive: false)
-            }
-            Section {
-                Toggle("Algorithm", isOn: $working.algorithm)
-                Toggle("Insulin Pump", isOn: $working.pump)
-                Toggle("CGM", isOn: $working.cgm)
-                SettingsAlertDeliveryRow(selection: Binding(
-                    get: { working.standardDelivery ?? .timeSensitive }, set: { working.standardDelivery = $0 }
-                ))
+            Group {
+                Section {
+                    Text("For your safety, urgent System Alerts cannot be turned off.").foregroundStyle(.secondary)
+                }
+                Section("Urgent Alerts") {
+                    Toggle("Algorithm", isOn: .constant(true)).disabled(true)
+                    Toggle("Insulin Pump", isOn: .constant(true)).disabled(true)
+                    Toggle("CGM", isOn: .constant(true)).disabled(true)
+                    SettingsAlertDeliveryRow(selection: Binding(
+                        get: { working.urgentDelivery ?? .alarm }, set: { working.urgentDelivery = $0 }
+                    ), allowsTimeSensitive: false)
+                }
+                Section {
+                    Toggle("Algorithm", isOn: $working.algorithm)
+                    Toggle("Insulin Pump", isOn: $working.pump)
+                    Toggle("CGM", isOn: $working.cgm)
+                    SettingsAlertDeliveryRow(selection: Binding(
+                        get: { working.standardDelivery ?? .timeSensitive }, set: { working.standardDelivery = $0 }
+                    ))
 
-            } header: { Text("Standard Alerts") } footer: {
-                SettingsHelpFooter(
-                    title: "Standard Alerts",
-                    text: "Standard alerts notify you about non-urgent system updates, status changes, and expiration reminders."
-                )
-            }
+                } header: { Text("Standard Alerts") } footer: {
+                    SettingsHelpFooter(
+                        title: "Standard Alerts",
+                        text: "Standard alerts notify you about non-urgent system updates, status changes, and expiration reminders."
+                    )
+                }
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("System Alerts")
+        .navigationBarTitleDisplayMode(.inline)
         .onChange(of: working) { _, value in
             if let data = try? JSONEncoder()
                 .encode(value) { UserDefaults.standard.set(data, forKey: SettingsSystemAlertPreferences.key) }
@@ -103,21 +106,24 @@ struct SettingsAlertDeliveryView: View {
                     Button { selection = delivery } label: {
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label { Text(delivery.title) } icon: {
+                                Label { Text(delivery.title).lineLimit(1).minimumScaleFactor(0.8) } icon: {
                                     Image(systemName: delivery.symbol).foregroundStyle(delivery.iconColor)
                                 }
                                 .font(.headline)
                                 Text(delivery.detail).font(.subheadline).foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer(minLength: 0)
-                            if selection == delivery { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Color.tabBar)
+                                .frame(width: 24)
+                                .opacity(selection == delivery ? 1 : 0)
+                                .accessibilityHidden(true)
                         }.padding(.vertical, 8)
                     }.foregroundStyle(Color.primary)
                 }
-            }.listRowBackground(Color.chart)
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("Delivery")
         .navigationBarTitleDisplayMode(.inline)
     }

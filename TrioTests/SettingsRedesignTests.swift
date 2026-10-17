@@ -93,10 +93,19 @@ import UIKit
                 AnyView(ScrollView { SettingsAlertProfileCard(profile: day, units: .mgdL, enabled: .constant(false)) {}.padding()
                 }.settingsBackground())
             ),
+            ("loop-mode-closed", AnyView(SettingsLoopModeSheet(selection: .constant(.closed), canSelect: true))),
+            ("loop-mode-partial", AnyView(SettingsLoopModeSheet(selection: .constant(.lowGlucoseSuspend), canSelect: true))),
+            ("loop-mode-open", AnyView(SettingsLoopModeSheet(selection: .constant(.open), canSelect: true))),
+            ("alerts-tones", AnyView(SettingsAlertToneList(filename: .constant("trill.caf")))),
+            ("system-alerts", AnyView(SettingsSystemAlertsView())),
+            (
+                "alerts-default-editor",
+                AnyView(SettingsAlertProfileEditor(initial: profiles.profiles.last!, units: .mgdL, store: profiles))
+            ),
             ("alerts-profiles", AnyView(SettingsAlertProfilesView(model: model, store: profiles))),
             ("alerts-editor", AnyView(SettingsAlertProfileEditor(initial: night, units: .mgdL, store: profiles))),
             ("alerts-schedule", AnyView(SettingsAlertScheduleEditor(initial: night.schedule, store: profiles) { _ in })),
-            ("alerts-low", AnyView(SettingsProfileAlertEditor(initial: GlucoseAlert(type: .low), units: .mgdL) { _ in })),
+            ("alerts-low", AnyView(SettingsProfileAlertEditor(alert: .constant(GlucoseAlert(type: .low)), units: .mgdL))),
             ("alerts-delivery", AnyView(SettingsAlertDeliveryView(selection: .constant(.critical)))),
             (
                 "alerts-sound",
@@ -276,35 +285,43 @@ import UIKit
         #expect(!alerts.alerts.contains { $0.type == .carbsRequired })
     }
 
-    @Test("Closing and reopening the toolbar search removes its text field and keyboard focus")
-    @MainActor func searchFieldPresentationLifecycle() async throws {
+    @Test("Native search cancellation resets presentation and can be repeated without selecting a result")
+    @MainActor func nativeSearchCancellation() async throws {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let previous = scene.keyWindow
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 430, height: 932)
-        let controller = UIHostingController(rootView: AnyView(Text("Settings")))
+        let searchState = SettingsNativeSearchTestState()
+        let controller = UIHostingController(rootView: SettingsNativeSearchTestHost(state: searchState))
         window.rootViewController = controller
         window.makeKeyAndVisible()
         defer { window.isHidden = true
             previous?.makeKey() }
 
-        func fields(_ view: UIView) -> [UITextField] {
-            (view as? UITextField).map { [$0] } ?? view.subviews.flatMap(fields)
+        func searchControllers(_ viewController: UIViewController) -> [UISearchController] {
+            let own = viewController.navigationItem.searchController.map { [$0] } ?? []
+            return own + viewController.children.flatMap(searchControllers)
         }
+        try await Task.sleep(for: .milliseconds(300))
+        controller.view.layoutIfNeeded()
+        let native = try #require(searchControllers(controller).first)
         for _ in 0 ..< 3 {
-            controller.rootView = AnyView(SettingsSearchFocusTestHost())
-            try await Task.sleep(for: .milliseconds(250))
-            controller.view.layoutIfNeeded()
-            let field = try #require(fields(window).first)
-            for _ in 0 ..< 20 where !field.isFirstResponder {
+            searchState.presented = true
+            for _ in 0 ..< 30 where !native.isActive {
                 try await Task.sleep(for: .milliseconds(50))
             }
-            #expect(field.isFirstResponder)
-            controller.rootView = AnyView(Text("Settings"))
-            try await Task.sleep(for: .milliseconds(250))
-            controller.view.layoutIfNeeded()
-            #expect(fields(window).isEmpty)
-            #expect(!field.isFirstResponder)
+            #expect(native.isActive)
+            searchState.query = "glucose"
+            try await Task.sleep(for: .milliseconds(350))
+            // Invoke the native Cancel action, without selecting a result.
+            native.searchBar.delegate?.searchBarCancelButtonClicked?(native.searchBar)
+            for _ in 0 ..< 30 where searchState.presented {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            try await Task.sleep(for: .milliseconds(350))
+            #expect(!searchState.presented)
+            #expect(searchState.query.isEmpty)
+            #expect(!native.isActive)
         }
     }
 
@@ -466,16 +483,20 @@ import UIKit
     }
 }
 
-private struct SettingsSearchFocusTestHost: View {
-    @FocusState private var focused: Bool
+@MainActor private final class SettingsNativeSearchTestState: ObservableObject {
+    @Published var query = ""
+    @Published var presented = false
+}
+
+private struct SettingsNativeSearchTestHost: View {
+    @ObservedObject var state: SettingsNativeSearchTestState
 
     var body: some View {
         NavigationStack {
-            Text("Search results").toolbar {
-                ToolbarItem(placement: .principal) {
-                    SettingsToolbarSearchField(text: .constant("glucose"), focused: $focused)
-                }
-            }
-        }.task { focused = true }
+            List { Text(state.presented ? "Search results" : "Settings rows") }
+                .navigationTitle("Settings")
+                .navigationBarTitleDisplayMode(.large)
+                .modifier(SettingsNativeSearch(text: $state.query, isPresented: $state.presented))
+        }
     }
 }

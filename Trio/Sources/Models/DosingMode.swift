@@ -36,7 +36,7 @@ enum DosingMode: String, JSON, CaseIterable, Identifiable, Codable, Hashable {
     }
 
     /// Modes offered in Settings.
-    static var userSelectable: [DosingMode] { allCases }
+    static var userSelectable: [DosingMode] { [.closed, .lowGlucoseSuspend, .open] }
 
     var displayName: String {
         switch self {
@@ -45,7 +45,7 @@ enum DosingMode: String, JSON, CaseIterable, Identifiable, Codable, Hashable {
         case .open:
             return String(localized: "Open Loop", comment: "Dosing mode")
         case .lowGlucoseSuspend:
-            return String(localized: "Low Glucose Suspend", comment: "Dosing mode")
+            return String(localized: "Partial Loop", comment: "Dosing mode")
         case .basalTesting:
             return String(localized: "Basal Testing", comment: "Dosing mode")
         }

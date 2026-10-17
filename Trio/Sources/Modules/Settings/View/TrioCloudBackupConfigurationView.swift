@@ -55,11 +55,11 @@ struct TrioCloudBackupConfigurationView: View {
                 if pending > 0 { Text("\(pending) backup operation(s) pending.") }
                 if let error { Text(error).foregroundStyle(.secondary) }
 
-            }.listRowBackground(Color.chart)
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
 
         .listSectionSpacing(sectionSpacing)
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("Configuration")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: automatic) { _, value in TrioCloudBackupCoordinator.shared.automaticEnabled = value }

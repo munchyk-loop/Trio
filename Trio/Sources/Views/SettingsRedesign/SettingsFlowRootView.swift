@@ -7,7 +7,6 @@ struct SettingsFlowRootView: View {
     @StateObject private var model: SettingsFlowModel
     @State private var searchQuery = ""
     @State private var searchPresented = false
-    @FocusState private var searchFocused: Bool
     @State private var showingModes = false
     @State private var searchDestination: SettingsFlowSearchEntry?
     @State private var knownVersionIssues = false
@@ -32,83 +31,45 @@ struct SettingsFlowRootView: View {
                 }
             }
         }
+        .tint(Color.tabBar)
+        .animation(.default, value: searchPresented)
+        .animation(.default, value: searchQuery)
         .listStyle(.insetGrouped)
         .settingsBackground()
-        .navigationTitle(searchPresented ? "" : "Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.large)
         .navigationDestination(item: $searchDestination) { entry in
             SettingsFlowPageView(page: entry.page, model: model)
         }
         .onChange(of: searchPresented) { _, presented in
             if !presented { searchQuery = "" }
         }
-        .task(id: searchPresented) { searchFocused = searchPresented }
         .onDisappear {
             searchPresented = false
             searchQuery = ""
         }
         .toolbar {
-            if searchPresented {
-                ToolbarItem(placement: .principal) {
-                    SettingsToolbarSearchField(text: $searchQuery, focused: $searchFocused)
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showingModes = true } label: {
+                    SettingsLoopModeSymbol(mode: model.settings.dosingMode, size: 22)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        searchPresented = false
-                        searchQuery = ""
-                    } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Close Search")
-                        .accessibilityIdentifier("settings.search.close")
-                }
+                .tint(model.settings.dosingMode.settingsColor)
+                .accessibilityLabel("Loop Mode, \(model.settings.dosingMode.displayName)")
+            }
+            if #available(iOS 26.0, *) {
+                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
             } else {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showingModes = true } label: {
-                        Label(model.settings.dosingMode.displayName, systemImage: model.settings.dosingMode.icon)
-                    }
-                    .accessibilityLabel("Dosing Mode")
-                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { withAnimation { searchPresented = true } } label: { Image(systemName: "magnifyingglass") }
+                    Button { searchPresented = true } label: { Image(systemName: "magnifyingglass") }
+                        .tint(.white)
                         .accessibilityLabel("Search Settings")
-                        .accessibilityIdentifier("settings.search.open")
                 }
             }
         }
+        .modifier(SettingsNativeSearch(text: $searchQuery, isPresented: $searchPresented))
+        .tint(.white)
         .sheet(isPresented: $showingModes) {
-            NavigationStack {
-                Form {
-                    Section {
-                        Picker("Dosing Mode", selection: model.setting(\.dosingMode)) {
-                            ForEach(DosingMode.userSelectable) { Text($0.displayName).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                        .disabled(!state.hasCgmAndPump())
-                    } footer: {
-                        Text(
-                            "Trio analyzes your glucose every 5 minutes to calculate helpful insulin adjustments. Choose which adjustments Trio can make automatically. All modes require an active CGM and insulin pump."
-                        )
-                    }
-                    Section {
-                        ForEach(DosingMode.userSelectable) { mode in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Label(mode.displayName, systemImage: mode.icon).font(.headline)
-                                Text(mode.description).font(.subheadline).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-                .settingsBackground()
-                .navigationTitle("Dosing Mode")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button { showingModes = false } label: { Image(systemName: "checkmark") }
-                            .accessibilityLabel("Done")
-                    }
-                }
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
+            SettingsLoopModeSheet(selection: model.setting(\.dosingMode), canSelect: state.hasCgmAndPump())
         }
         .task {
             await releaseNotes.load()
@@ -381,41 +342,28 @@ struct SettingsFlowSearchResults: View {
     }
 }
 
-/// The field exists only while search is open, so closing it removes its focus
-/// and toolbar presentation together rather than reflecting system state back.
-struct SettingsToolbarSearchField: View {
+/// SwiftUI owns activation and dismissal. Do not mirror isSearching back into
+/// isPresented: that can reactivate a search the system is still dismissing.
+struct SettingsNativeSearch: ViewModifier {
     @Binding var text: String
-    var focused: FocusState<Bool>.Binding
+    @Binding var isPresented: Bool
 
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search Settings", text: $text)
-                .textFieldStyle(.plain)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.search)
-                .focused(focused)
-                .accessibilityIdentifier("settings.search.field")
-            if !text.isEmpty {
-                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear Search")
+    func body(content: Content) -> some View {
+        content
+            .searchable(text: $text, isPresented: $isPresented, placement: .toolbar, prompt: "Search Settings")
+            .modifier(SettingsSearchToolbarBehavior())
+            .onChange(of: isPresented) { _, presented in
+                if !presented { text = "" }
             }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(minWidth: 170, idealWidth: 250, maxWidth: .infinity)
-        .modifier(SettingsSearchFieldBackground())
     }
 }
 
-private struct SettingsSearchFieldBackground: ViewModifier {
+private struct SettingsSearchToolbarBehavior: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: Capsule())
+            content.searchToolbarBehavior(.minimize)
         } else {
-            content.background(.regularMaterial, in: Capsule())
+            content
         }
     }
 }

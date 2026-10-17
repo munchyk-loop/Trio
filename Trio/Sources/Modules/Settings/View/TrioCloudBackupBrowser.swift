@@ -25,7 +25,7 @@ struct TrioCloudBackupBrowser: View {
                     HStack {
                         Text("Choose a backup to restore.").font(.headline)
                         Spacer()
-                        refreshButton
+                        refreshButton()
                     }
                     status
                     ForEach(sectionOrder, id: \.self) { origin in
@@ -64,15 +64,15 @@ struct TrioCloudBackupBrowser: View {
                             }
                         }
 
-                    }.listRowBackground(Color.chart)
+                    }.listRowBackground(Color.chart).tint(Color.tabBar)
                 }
                 .listSectionSpacing(sectionSpacing)
 
-                .settingsBackground()
+                .settingsBackground().tint(.white)
 
                 .navigationTitle("View Backups")
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { refreshButton } }
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { refreshButton(inToolbar: true) } }
             }
         }
         .task {
@@ -122,7 +122,7 @@ struct TrioCloudBackupBrowser: View {
                 if selectedBackupID == entry.id {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.tabBar)
                         .accessibilityHidden(true)
                 }
                 Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
@@ -154,15 +154,15 @@ struct TrioCloudBackupBrowser: View {
         }
     }
 
-    private var refreshButton: some View {
+    private func refreshButton(inToolbar: Bool = false) -> some View {
         Button { Task { await refresh() } } label: {
             Group {
-                if loading { ProgressView().tint(.primary) }
-                else { Image(systemName: "arrow.clockwise").foregroundStyle(.primary) }
+                if loading { ProgressView().tint(inToolbar ? .white : .primary) }
+                else { Image(systemName: "arrow.clockwise").foregroundStyle(inToolbar ? Color.white : Color.primary) }
             }
             .frame(width: 24, height: 24)
         }
-        .tint(.primary)
+        .tint(inToolbar ? .white : .primary)
         .accessibilityLabel("Refresh backups")
         .disabled(busy)
     }

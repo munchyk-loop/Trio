@@ -21,7 +21,7 @@ struct SettingsAlertProfilesView: View {
                 )
                 .font(.subheadline).foregroundStyle(.secondary)
             }
-            .listRowBackground(Color.chart)
+            .listRowBackground(Color.chart).tint(Color.tabBar)
             Section("Active Profiles") {
                 ForEach(store.profiles.filter(\.isEnabled)) { profile in profileCard(profile) }
             }
@@ -32,7 +32,7 @@ struct SettingsAlertProfilesView: View {
             }
         }
         .listSectionSpacing(24)
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("Glucose Alerts")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -47,7 +47,7 @@ struct SettingsAlertProfilesView: View {
                         schedule: .init(kind: .time),
                         alerts: alerts
                     )
-                } label: { Image(systemName: "plus") }
+                } label: { Image(systemName: "plus") }.tint(.white)
                     .accessibilityLabel("Add Alert Profile")
             }
         }
@@ -96,22 +96,24 @@ struct SettingsAlertProfileCard: View {
                         Spacer()
                         if !profile.isFallback { Color.clear.frame(width: 52, height: 32) }
                     }
-                    .padding(12)
-                    .modifier(SettingsAlertGlassGroup())
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .modifier(SettingsAlertRowGroup())
                     alertGroup([.urgentLow, .low, .high])
                     alertGroup([.forecastedLow, .fallingFast])
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(profile.scheduleSummary).font(.subheadline)
+                            Text(profile.scheduleSummary)
                             if !profile.scheduleDetail
                                 .isEmpty { Text(profile.scheduleDetail).font(.caption).foregroundStyle(.secondary) }
                         }
                         Spacer()
                         Image(systemName: profile.schedule.kind == .location ? "location.fill" : "clock.fill")
-                            .foregroundStyle(profile.isEnabled ? Color.accentColor : Color.secondary)
+                            .foregroundStyle(profile.isEnabled ? Color.tabBar : Color.secondary)
                     }
-                    .padding(12)
-                    .modifier(SettingsAlertGlassGroup())
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .modifier(SettingsAlertRowGroup())
                 }
                 .padding(16)
                 .foregroundStyle(profile.isEnabled ? Color.primary : Color.secondary)
@@ -131,10 +133,10 @@ struct SettingsAlertProfileCard: View {
             if !profile.isFallback {
                 Toggle(profile.name, isOn: $enabled)
                     .labelsHidden()
-                    .tint(.accentColor)
+                    .tint(Color.tabBar)
                     .fixedSize()
-                    .padding(.top, 28)
-                    .padding(.trailing, 28)
+                    .padding(.top, 22)
+                    .padding(.trailing, 32)
             }
         }
     }
@@ -146,22 +148,18 @@ struct SettingsAlertProfileCard: View {
                 ForEach(Array(alerts.enumerated()), id: \.element.id) { index, alarm in
                     if index > 0 { Divider() }
                     SettingsAlertSummaryRow(alert: alarm, units: units)
-                        .padding(.vertical, 12)
+                        .frame(minHeight: 44)
                 }
             }
-            .padding(.horizontal, 14)
-            .modifier(SettingsAlertGlassGroup())
+            .padding(.horizontal, 16)
+            .modifier(SettingsAlertRowGroup())
         }
     }
 }
 
-private struct SettingsAlertGlassGroup: ViewModifier {
-    @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.tint(.white.opacity(0.07)), in: RoundedRectangle(cornerRadius: 18))
-        } else {
-            content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-        }
+private struct SettingsAlertRowGroup: ViewModifier {
+    func body(content: Content) -> some View {
+        content.background(.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 18))
     }
 }
 
@@ -223,7 +221,7 @@ struct SettingsAlertSummaryRow: View {
                 }
             }
         }
-        .font(.subheadline)
+        .font(.body)
     }
 }
 
@@ -251,7 +249,6 @@ struct SettingsAlertProfileEditor: View {
     @ObservedObject var store: SettingsAlertProfilesStore
     @State private var working: SettingsAlertProfile
     @State private var showingSchedule = false
-    @State private var editingAlert: GlucoseAlert?
     @Environment(\.dismiss) private var dismiss
 
     init(initial: SettingsAlertProfile, units: GlucoseUnits, store: SettingsAlertProfilesStore) {
@@ -268,6 +265,7 @@ struct SettingsAlertProfileEditor: View {
                         NavigationLink {
                             Form {
                                 Section { TextField("Name", text: $working.name) }.listRowBackground(Color.chart)
+                                    .tint(Color.tabBar)
                                 Section {
                                     Picker(
                                         "Symbol",
@@ -285,12 +283,14 @@ struct SettingsAlertProfileEditor: View {
                                             id: \.self
                                         ) { Image(systemName: $0).tag($0) }
                                     }.pickerStyle(.menu)
-                                }.listRowBackground(Color.chart)
-                            }.settingsBackground().navigationTitle("Name")
+                                }.listRowBackground(Color.chart).tint(Color.tabBar)
+                            }.settingsBackground().tint(.white).navigationTitle("Name")
                         } label: { Label(working.name, systemImage: working.displaySymbol) }
-                    }.listRowBackground(Color.chart)
-                    if !working.isFallback {
-                        Section("Schedule") {
+                    }.listRowBackground(Color.chart).tint(Color.tabBar)
+                    Section("Schedule") {
+                        if working.isFallback {
+                            LabeledContent("Default", value: "Always")
+                        } else {
                             Button { showingSchedule = true } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
@@ -299,32 +299,39 @@ struct SettingsAlertProfileEditor: View {
                                     }
                                     Spacer(minLength: 8)
                                     Image(systemName: working.schedule.kind == .location ? "location.fill" : "clock.fill")
-                                        .foregroundStyle(Color.accentColor)
+                                        .foregroundStyle(Color.tabBar)
                                     Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
                                 }
                             }.foregroundStyle(Color.primary)
                         }
                     }
                     Section("Glucose Alerts") { editorAlertRows([.urgentLow, .low, .high]) }.listRowBackground(Color.chart)
+                        .tint(Color.tabBar)
                     Section { editorAlertRows([.forecastedLow, .fallingFast]) }.listRowBackground(Color.chart)
-                    if !working.isFallback, store.profiles.contains(where: { $0.id == working.id }) {
-                        Section {
-                            Button("Delete Profile", role: .destructive) { store.remove(working)
-                                dismiss() }
+                        .tint(Color.tabBar)
+                    Section {
+                        Button("Delete Profile", role: .destructive) {
+                            if store.profiles.contains(where: { $0.id == working.id }) { store.remove(working) }
+                            dismiss()
+                        }
+                        .disabled(working.isFallback)
+                    } footer: {
+                        if working.isFallback {
+                            Text("The Default profile applies when no scheduled profile is active and cannot be deleted.")
                         }
                     }
-                }.listRowBackground(Color.chart)
+                }.listRowBackground(Color.chart).tint(Color.tabBar)
             }
-            .settingsBackground()
+            .settingsBackground().tint(.white)
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Cancel")
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white).accessibilityLabel("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { store.save(working)
-                        dismiss() } label: { Image(systemName: "checkmark") }
+                        dismiss() } label: { Image(systemName: "checkmark") }.tint(Color.tabBar)
                         .accessibilityLabel("Save Profile")
                         .disabled(working.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
@@ -333,22 +340,16 @@ struct SettingsAlertProfileEditor: View {
                 SettingsAlertScheduleEditor(initial: working.schedule, store: store) { working.schedule = $0 }
                     .presentationDetents([.large]).presentationDragIndicator(.hidden)
             }
-            .sheet(item: $editingAlert) { alert in
-                SettingsProfileAlertEditor(initial: alert, units: units) { updated in
-                    if let index = working.alerts.firstIndex(where: { $0.id == updated.id }) { working.alerts[index] = updated }
-                }.presentationDetents([.large]).presentationDragIndicator(.hidden)
-            }
         }
     }
 
     @ViewBuilder private func editorAlertRows(_ types: [GlucoseAlertType]) -> some View {
         ForEach(types, id: \.self) { type in
-            if let alarm = working.supportedAlerts.first(where: { $0.type == type }) {
-                Button { editingAlert = alarm } label: {
-                    HStack {
-                        SettingsAlertSummaryRow(alert: alarm, units: units, showOff: true)
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                    }
+            if let index = working.alerts.firstIndex(where: { $0.type == type }) {
+                NavigationLink {
+                    SettingsProfileAlertEditor(alert: $working.alerts[index], units: units)
+                } label: {
+                    SettingsAlertSummaryRow(alert: working.alerts[index], units: units, showOff: true)
                 }.foregroundStyle(Color.primary)
             }
         }
@@ -409,7 +410,7 @@ struct SettingsAlertScheduleEditor: View {
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .buttonBorderShape(.circle)
-                                    .tint(working.weekdays.contains(day) ? Color.accentColor : Color.secondary.opacity(0.3))
+                                    .tint(working.weekdays.contains(day) ? Color.tabBar : Color.secondary.opacity(0.3))
                                     .accessibilityLabel(Calendar.current.weekdaySymbols[day - 1])
                                     .accessibilityAddTraits(working.weekdays.contains(day) ? .isSelected : [])
                                 }
@@ -419,7 +420,7 @@ struct SettingsAlertScheduleEditor: View {
                                 working.weekdays.sorted().map { Calendar.current.shortWeekdaySymbols[$0 - 1] }
                                     .joined(separator: ", ")
                             ) }
-                            .listRowBackground(Color.chart)
+                            .listRowBackground(Color.chart).tint(Color.tabBar)
                     }
                     if working.kind == .location {
                         Section {
@@ -445,7 +446,7 @@ struct SettingsAlertScheduleEditor: View {
                                     MapCircle(
                                         center: CLLocationCoordinate2D(latitude: working.latitude, longitude: working.longitude),
                                         radius: working.radius
-                                    ).foregroundStyle(Color.accentColor.opacity(0.2))
+                                    ).foregroundStyle(Color.tabBar.opacity(0.2))
                                 }
                                 .frame(height: 220)
                                 Stepper("Radius: \(Int(working.radius)) m", value: $working.radius, in: 100 ... 2000, step: 100)
@@ -463,18 +464,18 @@ struct SettingsAlertScheduleEditor: View {
                             )
                         }
                     }
-                }.listRowBackground(Color.chart)
+                }.listRowBackground(Color.chart).tint(Color.tabBar)
             }
-            .settingsBackground()
+            .settingsBackground().tint(.white)
             .navigationTitle("Schedule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Cancel")
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white).accessibilityLabel("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { onSave(working)
-                        dismiss() } label: { Image(systemName: "checkmark") }
+                        dismiss() } label: { Image(systemName: "checkmark") }.tint(Color.tabBar)
                         .accessibilityLabel("Save Schedule")
                         .disabled(
                             (working.kind == .time && working.weekdays.isEmpty) ||
@@ -519,90 +520,74 @@ struct SettingsAlertScheduleEditor: View {
 }
 
 struct SettingsProfileAlertEditor: View {
+    @Binding var working: GlucoseAlert
     let units: GlucoseUnits
-    let onSave: (GlucoseAlert) -> Void
-    @State private var working: GlucoseAlert
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var previewer = SoundPreviewPlayer()
 
-    init(initial: GlucoseAlert, units: GlucoseUnits, onSave: @escaping (GlucoseAlert) -> Void) {
+    init(alert: Binding<GlucoseAlert>, units: GlucoseUnits) {
+        _working = alert
         self.units = units
-        self.onSave = onSave
-        _working = State(initialValue: initial)
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Group {
-                    Section("Configuration") {
-                        if working.type == .forecastedLow {
-                            Toggle("Urgent Low Soon", isOn: $working.isEnabled)
-                        } else {
-                            SettingsNumberRow(
-                                title: working.type.settingsTitle,
-                                value: thresholdSelection,
-                                spec: thresholdSpec,
-                                units: units,
-                                suffix: working.type == .fallingFast ? (units == .mmolL ? "mmol/L/min" : "mg/dL/min") : nil,
-                                includeOff: working.type != .urgentLow,
-                                displayTransform: { working.type == .fallingFast && units == .mmolL ? $0.asMmolL : $0 },
-                                presentation: .wheel
-                            )
-                        }
-                    }.listRowBackground(Color.chart)
-                    Section {
-                        SettingsAlertDeliveryRow(selection: Binding(
-                            get: { working.delivery ?? (working.overridesSilenceAndDND ? .alarm : .timeSensitive) },
-                            set: {
-                                working.delivery = $0
-                                working.overridesSilenceAndDND = $0 != .timeSensitive
-                                if $0 == .timeSensitive, working.soundMode == .soundAlways {
-                                    working.soundMode = .matchPhone
-                                }
-                                if $0 == .alarm { Task { await CriticalAlertAlarmScheduler.requestAuthorization() } }
-                            }
-                        ))
-                        NavigationLink {
-                            SettingsAlertSoundView(
-                                mode: soundSelection,
-                                filename: $working.soundFilename,
-                                delivery: working.settingsDelivery
-                            )
-                        } label: { LabeledContent("Sound", value: working.settingsSoundMode.title) }
-                    }.listRowBackground(Color.chart)
-
-                    Section {
+        Form {
+            Group {
+                Section("Configuration") {
+                    if working.type == .forecastedLow {
+                        Toggle("Urgent Low Soon", isOn: $working.isEnabled)
+                    } else {
                         SettingsNumberRow(
-                            title: "Alert Snooze",
-                            value: Binding(get: { Decimal(working.snoozeMinutes ?? 15) }, set: {
-                                working.snoozeMinutes = NSDecimalNumber(decimal: $0).intValue
-                            }),
-                            spec: PickerSetting(value: 15, step: 5, min: 5, max: 60, type: .minute),
+                            title: working.type.settingsTitle,
+                            value: thresholdSelection,
+                            spec: thresholdSpec,
+                            units: units,
+                            suffix: working.type == .fallingFast ? (units == .mmolL ? "mmol/L/min" : "mg/dL/min") : nil,
+                            includeOff: working.type != .urgentLow,
+                            displayTransform: { working.type == .fallingFast && units == .mmolL ? $0.asMmolL : $0 },
                             presentation: .wheel
                         )
-                    } footer: {
-                        SettingsHelpFooter(
-                            title: "Alert Snooze",
-                            text: "How long to wait after this alert is acknowledged before sending another alert for this same condition."
-                        )
                     }
-                }.listRowBackground(Color.chart)
-            }
-            .settingsBackground()
-            .navigationTitle(working.type == .low ? String(localized: "Low Glucose Alert") : working.type.displayName)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.accessibilityLabel("Cancel")
+                }.listRowBackground(Color.chart).tint(Color.tabBar)
+                Section {
+                    SettingsAlertDeliveryRow(selection: Binding(
+                        get: { working.delivery ?? (working.overridesSilenceAndDND ? .alarm : .timeSensitive) },
+                        set: {
+                            working.delivery = $0
+                            working.overridesSilenceAndDND = $0 != .timeSensitive
+                            if $0 == .timeSensitive, working.soundMode == .soundAlways {
+                                working.soundMode = .matchPhone
+                            }
+                            if $0 == .alarm { Task { await CriticalAlertAlarmScheduler.requestAuthorization() } }
+                        }
+                    ))
+                    NavigationLink {
+                        SettingsAlertSoundView(
+                            mode: soundSelection,
+                            filename: $working.soundFilename,
+                            delivery: working.settingsDelivery
+                        )
+                    } label: { LabeledContent("Sound", value: working.settingsSoundMode.title) }
+                }.listRowBackground(Color.chart).tint(Color.tabBar)
+
+                Section {
+                    SettingsNumberRow(
+                        title: "Alert Snooze",
+                        value: Binding(get: { Decimal(working.snoozeMinutes ?? 15) }, set: {
+                            working.snoozeMinutes = NSDecimalNumber(decimal: $0).intValue
+                        }),
+                        spec: PickerSetting(value: 15, step: 5, min: 5, max: 60, type: .minute),
+                        presentation: .wheel
+                    )
+                } footer: {
+                    SettingsHelpFooter(
+                        title: "Alert Snooze",
+                        text: "How long to wait after this alert is acknowledged before sending another alert for this same condition."
+                    )
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button { onSave(working)
-                        dismiss() } label: { Image(systemName: "checkmark") }.accessibilityLabel("Save Alert")
-                }
-            }
-            .onDisappear { previewer.stop() }
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
+        .settingsBackground().tint(.white)
+        .navigationTitle(working.type == .low ? String(localized: "Low Glucose Alert") : working.type.displayName)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var thresholdSelection: Binding<Decimal> {
@@ -646,48 +631,44 @@ struct SettingsAlertSoundView: View {
                     text: "Sound Always is not available for Time Sensitive alerts as they cannot override Silent mode."
                 )
                 .font(.subheadline).foregroundStyle(.secondary)
-            }.listRowBackground(Color.chart)
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
             Section {
                 ForEach(SettingsAlertSoundMode.allCases) { choice in
-                    Button { mode = choice } label: {
+                    Button {
+                        mode = choice
+                        if choice == .vibrateAlways { previewer.stop() }
+                        else { previewer.play(filename: filename) }
+                    } label: {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label(choice.title, systemImage: choice.symbol).font(.headline)
+                                Label(choice.title, systemImage: choice.symbol).font(.headline).lineLimit(1)
+                                    .minimumScaleFactor(0.8)
                                 Text(choice.detail).font(.subheadline).foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer(minLength: 0)
-                            if mode == choice { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Color.tabBar)
+                                .frame(width: 24)
+                                .opacity(mode == choice ? 1 : 0)
+                                .accessibilityHidden(true)
                         }.padding(.vertical, 8)
                     }
                     .foregroundStyle(Color.primary)
                     .disabled(choice == .soundAlways && delivery == .timeSensitive)
                 }
-            }.listRowBackground(Color.chart)
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
             if mode != .vibrateAlways {
                 Section {
                     NavigationLink {
-                        Form {
-                            Section {
-                                Picker("Sound", selection: $filename) {
-                                    ForEach(AlarmSoundCatalog.allFilenames, id: \.self) {
-                                        Text(AlarmSoundCatalog.displayName(for: $0)).tag($0) }
-                                }.pickerStyle(.inline).labelsHidden()
-                            }.listRowBackground(Color.chart)
-                            Section {
-                                Button("Preview Sound", systemImage: "play.circle") { previewer.toggle(filename: filename) }
-                            }.listRowBackground(Color.chart)
-                        }
-                        .settingsBackground()
-                        .navigationTitle("Sound")
-                        .onDisappear { previewer.stop() }
+                        SettingsAlertToneList(filename: $filename)
                     } label: { LabeledContent("Sound", value: AlarmSoundCatalog.displayName(for: filename)) }
-                }.listRowBackground(Color.chart)
+                }.listRowBackground(Color.chart).tint(Color.tabBar)
             }
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("Sound or Vibrate")
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { previewer.stop() }
     }
 }
 
@@ -700,5 +681,39 @@ extension SettingsAlertSoundMode {
                 localized: "When your phone is set to Ring, this alert will play a sound. When your phone is set to Silent, this alert will vibrate."
             )
         }
+    }
+}
+
+struct SettingsAlertToneList: View {
+    @Binding var filename: String
+    @StateObject private var previewer = SoundPreviewPlayer()
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(AlarmSoundCatalog.allFilenames, id: \.self) { sound in
+                    Button {
+                        filename = sound
+                        previewer.play(filename: sound)
+                    } label: {
+                        HStack {
+                            Text(AlarmSoundCatalog.displayName(for: sound))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Color.tabBar)
+                                .frame(width: 24)
+                                .opacity(filename == sound ? 1 : 0)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .foregroundStyle(Color.primary)
+                    .accessibilityAddTraits(filename == sound ? .isSelected : [])
+                }
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
+        }
+        .settingsBackground().tint(.white)
+        .navigationTitle("Sound")
+        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { previewer.stop() }
     }
 }

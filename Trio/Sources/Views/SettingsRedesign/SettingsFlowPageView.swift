@@ -22,14 +22,14 @@ struct SettingsFlowPageView: View {
     var body: some View {
         Group {
             if page == .caregivers {
-                SettingsScreenDestination(screen: .remoteControlConfig, resolver: model.resolver)
+                SettingsScreenDestination(screen: .remoteControlConfig, resolver: model.resolver).tint(Color.tabBar)
             } else if page == .cgm || page == .pump {
-                SettingsConnectedDeviceView(page: page, model: model)
+                SettingsConnectedDeviceView(page: page, model: model).tint(Color.tabBar)
             } else {
-                Form { content.listRowBackground(Color.chart) }.pickerStyle(.menu)
+                Form { content.listRowBackground(Color.chart).tint(Color.tabBar) }.pickerStyle(.menu)
             }
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle(LocalizedStringKey(page.title))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showLogs) { ShareSheet(activityItems: logItems) }
@@ -310,9 +310,9 @@ struct SettingsFlowPageView: View {
                                 "Trio will automatically un-suspend your pump after a manual 0 U/hr temporary basal rate expires."
                             )
                         }
-                        .listRowBackground(Color.chart)
+                        .listRowBackground(Color.chart).tint(Color.tabBar)
                     }
-                    .settingsBackground()
+                    .settingsBackground().tint(.white)
                     .navigationTitle("Auto Un-Suspend Pump")
                     .navigationBarTitleDisplayMode(.inline)
                 } label: {
@@ -416,8 +416,9 @@ struct SettingsFlowPageView: View {
                 )
             }
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("Temporary Basal Rate")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var dynamicISF: some View {

@@ -31,9 +31,9 @@ struct TrioCloudBackupView: View {
         ZStack {
             backupList
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle("Backup & Restore")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear { lastBackup = TrioCloudBackupCoordinator.shared.lastSuccessfulBackupDate }
         .onReceive(Foundation.NotificationCenter.default.publisher(for: TrioCloudBackupCoordinator.uploadNotification)) { _ in
             lastBackup = TrioCloudBackupCoordinator.shared.lastSuccessfulBackupDate
@@ -135,7 +135,7 @@ struct TrioCloudBackupView: View {
                     .buttonStyle(.borderless)
                 }
 
-            }.listRowBackground(Color.chart)
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
 
         .listSectionSpacing(sectionSpacing)

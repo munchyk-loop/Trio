@@ -46,8 +46,8 @@ import Testing
         }
     }
 
-    @Test("Every mode is selectable now that the clamps exist") func userSelectableModes() {
-        #expect(DosingMode.userSelectable == DosingMode.allCases)
+    @Test("Basal Testing remains decodable but is hidden from the loop mode selector") func userSelectableModes() {
+        #expect(DosingMode.userSelectable == [.closed, .lowGlucoseSuspend, .open])
     }
 
     @Test("Bundled defaults ship in open loop") func bundledDefaultIsOpen() throws {

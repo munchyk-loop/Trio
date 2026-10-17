@@ -69,18 +69,18 @@ struct TrioCloudBackupDetailView: View {
                     }
                 }
 
-            }.listRowBackground(Color.chart)
+            }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
         .disabled(restoring)
         .listSectionSpacing(sectionSpacing)
 
-        .settingsBackground()
+        .settingsBackground().tint(.white)
 
         .navigationTitle("Backup Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { dismiss() } label: { Image(systemName: "xmark") }
+                Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white)
                     .tint(.primary).accessibilityLabel("Close backup details").disabled(restoring)
             }
         }

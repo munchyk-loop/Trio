@@ -19,6 +19,125 @@ extension View {
     func settingsBackground() -> some View { modifier(SettingsBackground()) }
 }
 
+struct SettingsLoopModeSymbol: View {
+    let mode: DosingMode
+    var size: CGFloat = 28
+
+    var body: some View {
+        Group {
+            if mode == .open {
+                Image("SettingsOpenLoop").renderingMode(.template).resizable().scaledToFit()
+            } else {
+                Image(systemName: mode == .closed ? "circle" : "circle.dashed")
+                    .font(.system(size: size, weight: .black))
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+extension DosingMode {
+    var settingsColor: Color {
+        switch self {
+        case .closed: return .green
+        case .basalTesting,
+             .lowGlucoseSuspend: return .yellow
+        case .open: return .red
+        }
+    }
+
+    var settingsExplanation: String {
+        switch self {
+        case .closed:
+            return String(
+                localized: "Full Automation: Trio will reduce or pause basal delivery to help prevent low glucose and increase insulin delivery to correct high glucose."
+            )
+        case .basalTesting,
+             .lowGlucoseSuspend:
+            return String(
+                localized: "Safety-Only Automation: Trio will reduce or pause basal delivery to help prevent low glucose. Trio won’t increase insulin delivery to correct high glucose.* Your pump will only deliver your set basal rates and manual boluses.\n\n*When appropriate, Trio may make up for insulin withheld during reduced or paused basal delivery. It will never make up for more than the amount withheld."
+            )
+        case .open:
+            return String(
+                localized: "No Automation: Trio won’t adjust any insulin delivery, even to help prevent low glucose. Your pump will only deliver your set basal rates and manual boluses."
+            )
+        }
+    }
+}
+
+struct SettingsLoopModeSheet: View {
+    @Binding var selection: DosingMode
+    let canSelect: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 12) {
+                        ForEach(DosingMode.userSelectable) { mode in
+                            Button { selection = mode } label: {
+                                VStack(spacing: 12) {
+                                    SettingsLoopModeSymbol(mode: mode, size: 38)
+                                    Text(mode.displayName.replacingOccurrences(of: " ", with: "\n"))
+                                        .font(.headline).multilineTextAlignment(.center)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 116)
+                                .foregroundStyle(selection == mode ? mode.settingsColor : Color.secondary)
+                                .background(
+                                    selection == mode ? mode.settingsColor.opacity(0.12) : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 22)
+                                )
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 22)
+                                        .strokeBorder(
+                                            selection == mode ? mode.settingsColor : Color.secondary.opacity(0.4),
+                                            lineWidth: selection == mode ? 2 : 0.5
+                                        )
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!canSelect)
+                            .accessibilityLabel(mode.displayName)
+                            .accessibilityAddTraits(selection == mode ? .isSelected : [])
+                        }
+                    }.padding(.vertical, 8)
+                }.listRowBackground(Color.chart)
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Loop Modes").font(.headline)
+                        Text(
+                            "Trio analyzes your glucose every 5 minutes to determine how insulin delivery should adjust in each moment. Choose which adjustments Trio can make automatically. All Loop Modes require an active CGM and insulin pump."
+                        )
+                        .foregroundStyle(.secondary)
+                    }.padding(.vertical, 8)
+                    ForEach(DosingMode.userSelectable) { mode in
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                SettingsLoopModeSymbol(mode: mode, size: 20)
+                                Text(mode.displayName).font(.headline)
+                            }.foregroundStyle(.secondary)
+                            Text(mode.settingsExplanation).foregroundStyle(.secondary)
+                        }.padding(.vertical, 8)
+                    }
+                }.listRowBackground(Color.chart)
+            }
+            .settingsBackground()
+            .navigationTitle("Loop Mode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Image(systemName: "checkmark") }
+                        .tint(Color.tabBar).accessibilityLabel("Done")
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+    }
+}
+
 enum SettingsValuePresentation {
     case navigation
     case menu
@@ -38,7 +157,7 @@ struct SettingsHelpFooter: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button { showingHelp = true } label: {
                 Image(systemName: "info.circle")
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Color.tabBar)
                     .font(.body)
                     .frame(minWidth: 32, minHeight: 32)
                     .contentShape(Rectangle())
@@ -72,7 +191,7 @@ struct SettingsHelpSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white)
                         .accessibilityLabel("Close")
                 }
             }
@@ -147,7 +266,7 @@ struct SettingsNumberRow: View {
         case .wheel:
             Button { showingWheel = true } label: {
                 LabeledContent(LocalizedStringKey(title)) {
-                    Text(formatted(value)).foregroundStyle(Color.accentColor)
+                    Text(formatted(value)).foregroundStyle(Color.tabBar)
                 }
                 .foregroundStyle(Color.primary)
                 .contentShape(Rectangle())
@@ -172,7 +291,7 @@ struct SettingsNumberRow: View {
             }
             .listRowBackground(Color.chart)
         }
-        .settingsBackground()
+        .settingsBackground().tint(.white)
         .navigationTitle(LocalizedStringKey(title))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -223,7 +342,7 @@ struct SettingsGlucoseRangeRow: View {
     var body: some View {
         Button { showingPicker = true } label: {
             LabeledContent("Range") {
-                Text("\(number(lower)) – \(number(upper)) \(units.rawValue)").foregroundStyle(Color.accentColor)
+                Text("\(number(lower)) – \(number(upper)) \(units.rawValue)").foregroundStyle(Color.tabBar)
             }
             .foregroundStyle(Color.primary)
         }
@@ -314,7 +433,7 @@ struct SettingsProfileAvatar: View {
             }
         }
         .frame(width: size, height: size)
-        .background(Color.accentColor.opacity(0.15), in: Circle())
+        .background(Color.tabBar.opacity(0.15), in: Circle())
         .clipShape(Circle())
     }
 }
