@@ -5,82 +5,70 @@ struct SettingsFlowRootView: View {
     let resolver: Resolver
     @ObservedObject var state: Settings.StateModel
     @StateObject private var model: SettingsFlowModel
-    @State private var searchQuery = ""
-    @State private var searchPresented = false
+    @Binding private var search: SettingsSearchSession
     @State private var showingModes = false
+    @State private var searchQuery = ""
     @State private var searchDestination: SettingsFlowSearchEntry?
     @State private var knownVersionIssues = false
     @State private var availableVersion: String?
     @ObservedObject private var releaseNotes = ReleaseNotesService.shared
 
-    init(resolver: Resolver, state: Settings.StateModel) {
+    init(resolver: Resolver, state: Settings.StateModel, search: Binding<SettingsSearchSession>) {
         self.resolver = resolver
         self.state = state
+        _search = search
         _model = StateObject(wrappedValue: SettingsFlowModel(resolver: resolver))
     }
 
     var body: some View {
-        List {
-            if !searchPresented {
-                settingsSections.listRowBackground(Color.chart)
-            } else {
-                SettingsFlowSearchResults(query: searchQuery, model: model) { entry in
-                    searchDestination = entry
-                    searchPresented = false
-                    searchQuery = ""
+        settingsContent
+            .navigationDestination(item: $searchDestination) { entry in
+                SettingsFlowPageView(page: entry.page, model: model)
+            }
+            .tint(.primary)
+            .sheet(isPresented: $showingModes) {
+                SettingsLoopModeSheet(selection: model.setting(\.dosingMode), canSelect: state.hasCgmAndPump())
+            }
+            .task {
+                await releaseNotes.load()
+                let (_, latest, newer, blacklisted) = await AppVersionChecker.shared.refreshVersionInfo()
+                knownVersionIssues = blacklisted
+                availableVersion = newer ? latest : nil
+                if BuildDetails.shared.trioBranch != "main" {
+                    let (version, newer) = await AppVersionChecker.shared.checkForNewDevVersion()
+                    if newer { availableVersion = version }
                 }
+            }
+    }
+
+    // Native system search. The system alone owns whether search is active:
+    // there is deliberately no isPresented binding, because pushing a stale
+    // "presented" value back during a re-render re-opened search mid-close.
+    // Content reads \.isSearching; result taps use \.dismissSearch.
+    private var settingsContent: some View {
+        List {
+            SettingsSearchAwareContent(query: searchQuery, model: model, onSelect: { searchDestination = $0 }) {
+                settingsSections.listRowBackground(Color.chart)
             }
         }
         .tint(Color.tabBar)
-        .animation(.default, value: searchPresented)
-        .animation(.default, value: searchQuery)
         .listStyle(.insetGrouped)
         .settingsBackground()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(item: $searchDestination) { entry in
-            SettingsFlowPageView(page: entry.page, model: model)
-        }
-        .onChange(of: searchPresented) { _, presented in
-            if !presented { searchQuery = "" }
-        }
-        .onDisappear {
-            searchPresented = false
-            searchQuery = ""
-        }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showingModes = true } label: {
-                    SettingsLoopModeSymbol(mode: model.settings.dosingMode, size: 22)
-                }
-                .tint(model.settings.dosingMode.settingsColor)
-                .accessibilityLabel("Loop Mode, \(model.settings.dosingMode.displayName)")
-            }
-            if #available(iOS 26.0, *) {
-                DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
-            } else {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { searchPresented = true } label: { Image(systemName: "magnifyingglass") }
-                        .tint(.white)
-                        .accessibilityLabel("Search Settings")
-                }
-            }
+            ToolbarItem(id: "settings.loop-mode", placement: .topBarLeading) { loopModeButton }
         }
-        .modifier(SettingsNativeSearch(text: $searchQuery, isPresented: $searchPresented))
-        .tint(.white)
-        .sheet(isPresented: $showingModes) {
-            SettingsLoopModeSheet(selection: model.setting(\.dosingMode), canSelect: state.hasCgmAndPump())
+        .modifier(SettingsNativeSearch(text: $searchQuery))
+    }
+
+    private var loopModeButton: some View {
+        Button { showingModes = true } label: {
+            SettingsLoopModeSymbol(mode: model.settings.dosingMode, size: 22)
         }
-        .task {
-            await releaseNotes.load()
-            let (_, latest, newer, blacklisted) = await AppVersionChecker.shared.refreshVersionInfo()
-            knownVersionIssues = blacklisted
-            availableVersion = newer ? latest : nil
-            if BuildDetails.shared.trioBranch != "main" {
-                let (version, newer) = await AppVersionChecker.shared.checkForNewDevVersion()
-                if newer { availableVersion = version }
-            }
-        }
+        .tint(model.settings.dosingMode.settingsColor)
+        .accessibilityLabel("Loop Mode, \(model.settings.dosingMode.displayName)")
+        .accessibilityIdentifier("settings.loop-mode")
     }
 
     private var settingsSections: some View {
@@ -101,6 +89,7 @@ struct SettingsFlowRootView: View {
                     }
                     .padding(.vertical, 8)
                 }
+                .accessibilityIdentifier("settings.profile")
             }
             if knownVersionIssues {
                 Section {
@@ -120,7 +109,8 @@ struct SettingsFlowRootView: View {
                 row(.customize)
             }
             Section { row(.services)
-                row(.caregivers) }
+                row(.caregivers)
+            }
             Section { row(.support) }
             Section("App Info") {
                 NavigationLink {
@@ -209,7 +199,7 @@ struct SettingsFlowSearchEntry: Identifiable, Hashable {
 
     // Search only the supported flow. Indexing every legacy setting reintroduced
     // controls deliberately removed from the redesign through search results.
-    static var all: [Self] {
+    static let all: [Self] = {
         var entries = navigationEntries
         let labels: [(SettingsFlowPage, [String])] = [
             (.languageUnits, ["App Language", "Glucose", "eA1c/GMI", "TIR Lower Threshold"]),
@@ -292,12 +282,21 @@ struct SettingsFlowSearchEntry: Identifiable, Hashable {
             }
         }
         return entries
+    }()
+
+    // App-language changes relaunch the app, so localize once rather than on
+    // every keyboard event. Keep the entry IDs stable as results change.
+    private static let searchIndex: [(entry: Self, text: String)] = all.map { entry in
+        let localizedLabel = String(localized: String.LocalizationValue(entry.label))
+        let localizedPage = String(localized: String.LocalizationValue(entry.page.title))
+        return (entry, [entry.label, entry.aliases, localizedLabel, localizedPage].joined(separator: " "))
     }
 
     static func matching(_ text: String) -> [Self] {
         let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
-        return all.filter { entry in
-            words.allSatisfy { (entry.label + " " + entry.aliases).localizedCaseInsensitiveContains($0) }
+        guard !words.isEmpty else { return [] }
+        return searchIndex.compactMap { item in
+            words.allSatisfy { item.text.localizedStandardContains($0) } ? item.entry : nil
         }
     }
 }
@@ -342,28 +341,84 @@ struct SettingsFlowSearchResults: View {
     }
 }
 
-/// SwiftUI owns activation and dismissal. Do not mirror isSearching back into
-/// isPresented: that can reactivate a search the system is still dismissing.
-struct SettingsNativeSearch: ViewModifier {
-    @Binding var text: String
-    @Binding var isPresented: Bool
+// The presentation value owns results; keyboard focus never opens search.
+struct SettingsSearchSession: Equatable {
+    private(set) var query = ""
+    private(set) var isPresented = false
+    mutating func present() {
+        guard !isPresented else { return }
+        query = ""
+        isPresented = true
+    }
 
-    func body(content: Content) -> some View {
-        content
-            .searchable(text: $text, isPresented: $isPresented, placement: .toolbar, prompt: "Search Settings")
-            .modifier(SettingsSearchToolbarBehavior())
-            .onChange(of: isPresented) { _, presented in
-                if !presented { text = "" }
-            }
+    mutating func updateQuery(_ value: String) {
+        // Ignore a departing text field's write after Close or navigation.
+        guard isPresented else { return }
+        query = value
+    }
+
+    mutating func dismiss(reason: String = "App action") {
+        #if DEBUG
+            print("[SettingsSearch] dismiss: \(reason) queryLength=\(query.count)")
+        #endif
+        self = Self()
     }
 }
 
-private struct SettingsSearchToolbarBehavior: ViewModifier {
-    @ViewBuilder func body(content: Content) -> some View {
+struct SettingsSearchNavigationStack<Content: View>: View {
+    @Binding var path: NavigationPath
+    @State private var search = SettingsSearchSession()
+    @ViewBuilder var content: (Binding<SettingsSearchSession>) -> Content
+
+    var body: some View {
+        NavigationStack(path: $path) { content($search) }
+            .onDisappear { search.dismiss(reason: "Settings navigation scope disappeared") }
+    }
+}
+
+/// Shows search results while the system search is active, settings otherwise.
+/// Must live inside the `.searchable` view so it sees `isSearching`.
+private struct SettingsSearchAwareContent<Sections: View>: View {
+    let query: String
+    @ObservedObject var model: SettingsFlowModel
+    let onSelect: (SettingsFlowSearchEntry) -> Void
+    @ViewBuilder let sections: () -> Sections
+
+    @Environment(\.isSearching) private var isSearching
+    @Environment(\.dismissSearch) private var dismissSearch
+
+    var body: some View {
+        if isSearching {
+            SettingsFlowSearchResults(query: query, model: model) { entry in
+                dismissSearch()
+                onSelect(entry)
+            }
+        } else {
+            sections()
+        }
+    }
+}
+
+/// iOS 26+: the system search button in the top trailing slot, with the native
+/// Liquid Glass morph into the field. Earlier iOS: the standard search drawer.
+private struct SettingsNativeSearch: ViewModifier {
+    @Binding var text: String
+
+    func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.searchToolbarBehavior(.minimize)
+            content
+                .searchable(text: $text, placement: .toolbar, prompt: Text("Search Settings"))
+                .searchToolbarBehavior(.minimize)
+                .toolbar {
+                    DefaultToolbarItem(kind: .search, placement: .topBarTrailing)
+                }
         } else {
             content
+                .searchable(
+                    text: $text,
+                    placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: Text("Search Settings")
+                )
         }
     }
 }

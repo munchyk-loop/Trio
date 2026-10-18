@@ -93,7 +93,12 @@ extension View {
             Text("Hey Trioneer, watch out!", comment: "Title of the warning shown on builds that are not from the main branch"),
             isPresented: Binding(
                 get: { alerter.isPresented },
-                set: { alerter.isPresented = $0 }
+                set: { presented in
+                    // SwiftUI can repeat the current value while updating presentation.
+                    // Avoid publishing a redundant app-wide change from that update.
+                    guard alerter.isPresented != presented else { return }
+                    alerter.isPresented = presented
+                }
             )
         ) {
             Button(String(

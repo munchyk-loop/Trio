@@ -47,8 +47,23 @@ struct SettingsAlertSchedule: Codable, Equatable {
     var longitude = 0.0
     var radius = 200.0
 
+    /// A time picker needs a date, but schedules store wall-clock minutes. Use
+    /// a fixed reference day so today's daylight-saving transition cannot shift it.
+    static func pickerDate(for minute: Int, calendar: Calendar = .current) -> Date {
+        let reference = Date(timeIntervalSinceReferenceDate: 14 * 24 * 60 * 60)
+        let minute = min(max(minute, 0), 1439)
+        return calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: reference) ?? reference
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case kind, startMinute, endMinute, weekdays, locationName, latitude, longitude, radius
+        case kind
+        case startMinute
+        case endMinute
+        case weekdays
+        case locationName
+        case latitude
+        case longitude
+        case radius
     }
 
     func encode(to encoder: Encoder) throws {

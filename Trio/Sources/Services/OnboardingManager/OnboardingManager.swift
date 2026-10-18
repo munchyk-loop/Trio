@@ -18,6 +18,14 @@ import Swinject
 
     /// Checks if onboarding has been completed and updates the shouldShowOnboarding flag accordingly.
     private func checkOnboardingStatus() {
+        #if DEBUG && targetEnvironment(simulator)
+            // Exercise the real app's navigation in UI tests with a fresh sandbox.
+            // This changes no persisted onboarding flags and is unavailable on devices.
+            if ProcessInfo.processInfo.arguments.contains("--settings-search-ui-tests") {
+                shouldShowOnboarding = false
+                return
+            }
+        #endif
         shouldShowOnboarding = !(PropertyPersistentFlags.shared.onboardingCompleted ?? false)
     }
 

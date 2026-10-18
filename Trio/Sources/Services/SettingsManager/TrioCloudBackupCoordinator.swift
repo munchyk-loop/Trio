@@ -88,7 +88,6 @@ import Swinject
         return try await TrioSettingsBackup.capture(storage: storage, origin: origin, name: name)
     }
 
-
     deinit {
         dailyTimer?.cancel()
         if let onboardingObserver { Foundation.NotificationCenter.default.removeObserver(onboardingObserver) }
@@ -138,7 +137,8 @@ import Swinject
         set {
             defaults.set(newValue, forKey: Keys.enabled)
             if newValue { applicationDidBecomeActive() }
-            else { dailyTimer?.cancel(); dailyTimer = nil }
+            else { dailyTimer?.cancel()
+                dailyTimer = nil }
         }
     }
 
@@ -165,7 +165,8 @@ import Swinject
             Task { @MainActor in
                 guard let self else { return }
                 // Discard the previous account's queue; capture local settings for the new account.
-                do { try self.saveQueue([]) } catch { self.lastError = error; return }
+                do { try self.saveQueue([]) } catch { self.lastError = error
+                    return }
                 self.defaults.removeObject(forKey: Keys.lastFingerprint)
                 self.defaults.removeObject(forKey: Keys.lastBackedAt)
                 self.defaults.removeObject(forKey: Keys.lastDailyCheckAt)
@@ -206,7 +207,8 @@ import Swinject
     func runAutomaticBackup(capturePending: Bool = true, now: Date = Date()) async {
         guard !isUploading, !TrioCloudSettingsRestore.isRestoring, !onboardingInProgress() else { return }
         isUploading = true
-        defer { isUploading = false; scheduleDailyCheck() }
+        defer { isUploading = false
+            scheduleDailyCheck() }
         do {
             var queue = try loadQueue()
             if capturePending, automaticEnabled,
@@ -258,7 +260,8 @@ import Swinject
     private func withBackupOperation<Value>(_ operation: () async throws -> Value) async throws -> Value {
         guard !isUploading, !TrioCloudSettingsRestore.isRestoring else { throw BackupError.operationInProgress }
         isUploading = true
-        defer { isUploading = false; scheduleDailyCheck() }
+        defer { isUploading = false
+            scheduleDailyCheck() }
         return try await operation()
     }
 

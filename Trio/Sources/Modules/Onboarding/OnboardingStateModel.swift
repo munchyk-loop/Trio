@@ -82,7 +82,7 @@ extension Onboarding {
                 appliedCloudRestoreID = nil }
         }
 
-        @MainActor  func applySelectedCloudBackup() async throws {
+        @MainActor func applySelectedCloudBackup() async throws {
             guard let backup = pendingCloudRestore else { throw BackupError.restoreFailed }
             guard appliedCloudRestoreID != backup.id else { return }
             try await TrioCloudBackupCoordinator.shared.restoreDuringOnboarding(backup)

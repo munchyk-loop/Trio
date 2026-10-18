@@ -1,8 +1,8 @@
 import Foundation
 import SwiftUI
 import Testing
-import UIKit
 @testable import Trio
+import UIKit
 
 @Suite("Settings Redesign", .serialized) struct SettingsRedesignTests {
     @Test("Native settings forms mount in a navigation stack")
@@ -96,6 +96,10 @@ import UIKit
             ("loop-mode-closed", AnyView(SettingsLoopModeSheet(selection: .constant(.closed), canSelect: true))),
             ("loop-mode-partial", AnyView(SettingsLoopModeSheet(selection: .constant(.lowGlucoseSuspend), canSelect: true))),
             ("loop-mode-open", AnyView(SettingsLoopModeSheet(selection: .constant(.open), canSelect: true))),
+            (
+                "loop-mode-accessibility",
+                AnyView(SettingsLoopModeSheet(selection: .constant(.closed), canSelect: true).dynamicTypeSize(.accessibility3))
+            ),
             ("alerts-tones", AnyView(SettingsAlertToneList(filename: .constant("trill.caf")))),
             ("system-alerts", AnyView(SettingsSystemAlertsView())),
             (
@@ -107,6 +111,10 @@ import UIKit
             ("alerts-schedule", AnyView(SettingsAlertScheduleEditor(initial: night.schedule, store: profiles) { _ in })),
             ("alerts-low", AnyView(SettingsProfileAlertEditor(alert: .constant(GlucoseAlert(type: .low)), units: .mgdL))),
             ("alerts-delivery", AnyView(SettingsAlertDeliveryView(selection: .constant(.critical)))),
+            (
+                "alerts-delivery-accessibility",
+                AnyView(SettingsAlertDeliveryView(selection: .constant(.critical)).dynamicTypeSize(.accessibility3))
+            ),
             (
                 "alerts-sound",
                 AnyView(SettingsAlertSoundView(
@@ -132,9 +140,11 @@ import UIKit
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for (name, screen) in screens {
             window.overrideUserInterfaceStyle = .dark
-            let controller = UIHostingController(rootView: NavigationStack { screen }
-                .environment(AppState())
-                .environment(SettingsSearchHighlight()))
+            let controller = UIHostingController(
+                rootView: NavigationStack { screen }
+                    .environment(AppState())
+                    .environment(SettingsSearchHighlight())
+            )
             window.rootViewController = controller
             window.makeKeyAndVisible()
             try await Task.sleep(for: .milliseconds(300))
@@ -226,6 +236,69 @@ import UIKit
         #expect(!manager.preferences.skipNeutralTemps)
     }
 
+    @Test("Basic adjustment preserves the saved Dynamic ISF method")
+    @MainActor func basicPreservesDynamicISF() {
+        let manager = TrioApp.resolver.resolve(SettingsManager.self)!
+        let original = manager.preferences
+        defer { manager.preferences = original }
+        let model = SettingsFlowModel(resolver: TrioApp.resolver)
+        model.hasValidTDD = true
+        model.adjustmentMethod.wrappedValue = "sigmoid"
+        model.adjustmentMethod.wrappedValue = "basic"
+        #expect(!manager.preferences.useNewFormula)
+        #expect(manager.preferences.sigmoid)
+        model.adjustmentMethod.wrappedValue = "logarithmic"
+        #expect(manager.preferences.useNewFormula)
+        #expect(!manager.preferences.sigmoid)
+    }
+
+    @Test("Settings bindings immediately reflect normalized manager values")
+    @MainActor func normalizedBindingValues() {
+        let manager = TrioApp.resolver.resolve(SettingsManager.self)!
+        let originalSettings = manager.settings
+        let originalPreferences = manager.preferences
+        defer {
+            manager.settings = originalSettings
+            manager.preferences = originalPreferences
+        }
+        let model = SettingsFlowModel(resolver: TrioApp.resolver)
+        model.setting(\.displayPresets).wrappedValue = false
+        model.preference(\.skipNeutralTemps).wrappedValue = true
+        #expect(model.settings.displayPresets == manager.settings.displayPresets)
+        #expect(model.preferences.skipNeutralTemps == manager.preferences.skipNeutralTemps)
+    }
+
+    @Test("Body measurements accept positive values and clearing, and reject invalid values")
+    @MainActor func bodyMeasurementValidation() {
+        let manager = TrioApp.resolver.resolve(SettingsManager.self)!
+        let original = manager.settings
+        defer { manager.settings = original }
+        let model = SettingsFlowModel(resolver: TrioApp.resolver)
+        for key in [\SettingsUserProfile.heightCM, \SettingsUserProfile.weightKG] {
+            let binding = model.bodyMeasurement(key)
+            binding.wrappedValue = 80
+            #expect(binding.wrappedValue == 80)
+            for value in [0, -1, Double.infinity, Double.nan] {
+                binding.wrappedValue = value
+                #expect(binding.wrappedValue == 80)
+                #expect(model.error != nil)
+            }
+            binding.wrappedValue = nil
+            #expect(binding.wrappedValue == nil)
+        }
+    }
+
+    @Test("Schedule picker dates round trip wall-clock minutes in different time zones") func schedulePickerMinutes() {
+        for zone in ["America/New_York", "Europe/Berlin", "Australia/Sydney"] {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: zone)!
+            for minute in [0, 30, 90, 150, 450, 1439] {
+                let date = SettingsAlertSchedule.pickerDate(for: minute, calendar: calendar)
+                #expect(calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date) == minute)
+            }
+        }
+    }
+
     @Test("Profile initials use the first and last words of the name") func profileInitials() {
         for (name, initials) in [
             ("Mendel David Kaplan", "MK"),
@@ -285,43 +358,19 @@ import UIKit
         #expect(!alerts.alerts.contains { $0.type == .carbsRequired })
     }
 
-    @Test("Native search cancellation resets presentation and can be repeated without selecting a result")
-    @MainActor func nativeSearchCancellation() async throws {
-        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
-        let previous = scene.keyWindow
-        let window = UIWindow(windowScene: scene)
-        window.frame = CGRect(x: 0, y: 0, width: 430, height: 932)
-        let searchState = SettingsNativeSearchTestState()
-        let controller = UIHostingController(rootView: SettingsNativeSearchTestHost(state: searchState))
-        window.rootViewController = controller
-        window.makeKeyAndVisible()
-        defer { window.isHidden = true
-            previous?.makeKey() }
-
-        func searchControllers(_ viewController: UIViewController) -> [UISearchController] {
-            let own = viewController.navigationItem.searchController.map { [$0] } ?? []
-            return own + viewController.children.flatMap(searchControllers)
-        }
-        try await Task.sleep(for: .milliseconds(300))
-        controller.view.layoutIfNeeded()
-        let native = try #require(searchControllers(controller).first)
+    @Test("Closing search resets presentation and results", arguments: ["", "glucose"]) func closingSearch(query: String) {
+        var search = SettingsSearchSession()
         for _ in 0 ..< 3 {
-            searchState.presented = true
-            for _ in 0 ..< 30 where !native.isActive {
-                try await Task.sleep(for: .milliseconds(50))
-            }
-            #expect(native.isActive)
-            searchState.query = "glucose"
-            try await Task.sleep(for: .milliseconds(350))
-            // Invoke the native Cancel action, without selecting a result.
-            native.searchBar.delegate?.searchBarCancelButtonClicked?(native.searchBar)
-            for _ in 0 ..< 30 where searchState.presented {
-                try await Task.sleep(for: .milliseconds(50))
-            }
-            try await Task.sleep(for: .milliseconds(350))
-            #expect(!searchState.presented)
-            #expect(searchState.query.isEmpty)
-            #expect(!native.isActive)
+            search.isPresented = true
+            search.query = query
+            #expect(search.isPresented)
+            search.dismiss()
+            #expect(!search.isPresented)
+            #expect(search.query.isEmpty)
+            // Reopening must start with an empty query rather than stale results.
+            search.isPresented = true
+            #expect(search.query.isEmpty)
+            search.dismiss()
         }
     }
 
@@ -397,7 +446,10 @@ import UIKit
         var oldDevice = DeviceAlertSeverityConfig(severity: .critical, activeOption: .night)
         oldDevice.soundFilename = "old-tone.caf"
         defaults.set(try JSONEncoder().encode([oldDevice]), forKey: "trio.deviceAlertSeverityConfigs.v1")
-        defaults.set(try JSONEncoder().encode(["critical": Date().addingTimeInterval(600)]), forKey: "trio.deviceAlertTierSnoozes.v1")
+        defaults.set(
+            try JSONEncoder().encode(["critical": Date().addingTimeInterval(600)]),
+            forKey: "trio.deviceAlertTierSnoozes.v1"
+        )
         let devices = DeviceAlertsStore(defaults: defaults)
         #expect(devices.configs.count == DeviceAlertSeverity.allCases.count)
         #expect(devices.configs.allSatisfy { $0.activeOption == .always })
@@ -458,6 +510,36 @@ import UIKit
         #expect(!GlucoseAlert(type: .fallingFast).isEnabled)
     }
 
+    @Test("Empty search queries do not build results and result IDs stay stable") func searchIdentity() {
+        #expect(SettingsFlowSearchEntry.matching("").isEmpty)
+        #expect(SettingsFlowSearchEntry.matching("  \n").isEmpty)
+        #expect(Set(SettingsFlowSearchEntry.all.map(\.id)).count == SettingsFlowSearchEntry.all.count)
+        let first = SettingsFlowSearchEntry.matching("noisy cgm")
+        #expect(first.map(\.id) == SettingsFlowSearchEntry.matching("NOISY CGM").map(\.id))
+        #expect(!first.isEmpty)
+    }
+
+    @Test("Closing settings search rejects late input until the next explicit open") func searchClose() {
+        var search = SettingsSearchSession()
+        search.present()
+        search.updateQuery("glucose")
+        #expect(search.isPresented)
+        #expect(!search.query.isEmpty)
+
+        search.dismiss(reason: "Test Close")
+        search.updateQuery("late text field write")
+        #expect(!search.isPresented)
+        #expect(search.query.isEmpty)
+
+        search.present()
+        #expect(search.isPresented)
+        #expect(search.query.isEmpty)
+        search.updateQuery("Caregivers")
+        search.dismiss(reason: "Test result navigation")
+        #expect(!search.isPresented)
+        #expect(search.query.isEmpty)
+    }
+
     @Test("Settings search understands old and new terminology") func renamedSearch() {
         #expect(SettingsFlowSearchEntry.matching("super bolus").first?.page == .insulinDosing)
         #expect(SettingsFlowSearchEntry.matching("noisy cgm").first?.page == .cgm)
@@ -480,23 +562,5 @@ import UIKit
         #expect(settings.manualBolusFactors(slow: true, fast: false).fraction == 0.6)
         #expect(settings.manualBolusFactors(slow: false, fast: true).fraction == 1.1)
         #expect(settings.manualBolusFactors(slow: false, fast: false).fraction == 0.9)
-    }
-}
-
-@MainActor private final class SettingsNativeSearchTestState: ObservableObject {
-    @Published var query = ""
-    @Published var presented = false
-}
-
-private struct SettingsNativeSearchTestHost: View {
-    @ObservedObject var state: SettingsNativeSearchTestState
-
-    var body: some View {
-        NavigationStack {
-            List { Text(state.presented ? "Search results" : "Settings rows") }
-                .navigationTitle("Settings")
-                .navigationBarTitleDisplayMode(.large)
-                .modifier(SettingsNativeSearch(text: $state.query, isPresented: $state.presented))
-        }
     }
 }

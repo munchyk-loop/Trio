@@ -2,14 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Trio uses your location to activate the alert profiles you configure for specific places.</string>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Allow Trio to activate your location-based alert profiles when you arrive or leave, including while Trio is in the background.</string>
-	<key>AppGroupID</key>
-	<string>$(APP_GROUP_ID)</string>
 	<key>AppDevVersion</key>
 	<string>$(APP_DEV_VERSION)</string>
+	<key>AppGroupID</key>
+	<string>$(APP_GROUP_ID)</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).background-task.critical-event-log</string>
@@ -66,10 +62,10 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-	<key>NSAlarmKitUsageDescription</key>
-	<string>Trio uses alarms so urgent glucose and pump alerts can reach you even when your phone is silenced or a Focus is on.</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>NFC is used to scan Libre sensors.</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>Trio uses alarms so urgent glucose and pump alerts can reach you even when your phone is silenced or a Focus is on.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -93,6 +89,10 @@
 	<string>Health App is used to store blood glucose, carbs and insulin</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(COPYRIGHT_NOTICE)</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Allow Trio to activate your location-based alert profiles when you arrive or leave, including while Trio is in the background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Trio uses your location to activate the alert profiles you configure for specific places.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>TeamID</key>

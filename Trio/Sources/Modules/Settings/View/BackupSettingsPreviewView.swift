@@ -24,7 +24,10 @@ struct BackupSettingsNode: Identifiable {
             ("Fast Absorption", backup.configuration.settings.fastAbsorptionDeliveryRatio)
         ] {
             if let value {
-                builder.add(.init(id: title, title: title, value: format(value * 100) + " %"), path: ["Algorithm", "Insulin Dosing"])
+                builder.add(
+                    .init(id: title, title: title, value: format(value * 100) + " %"),
+                    path: ["Algorithm", "Insulin Dosing"]
+                )
             }
         }
         builder.addSchedules()

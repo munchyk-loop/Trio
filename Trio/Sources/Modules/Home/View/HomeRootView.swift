@@ -408,8 +408,8 @@ extension Home {
                                 systemImage: "slider.horizontal.2.gobackward"
                             ).accessibilityLabel(Text("Adjustments")) }.tag(2)
 
-                    NavigationStack(path: self.$settingsPath) {
-                        Settings.RootView(resolver: resolver) }
+                    SettingsSearchNavigationStack(path: $settingsPath) { search in
+                        Settings.RootView(resolver: resolver, search: search) }
                         .environment(settingsSearchHighlight)
                         .tabItem { Label(
                             "",
@@ -542,8 +542,8 @@ extension Home {
                                 systemImage: "slider.horizontal.2.gobackward"
                             ) }.tag(2)
 
-                    NavigationStack(path: self.$settingsPath) {
-                        Settings.RootView(resolver: resolver) }
+                    SettingsSearchNavigationStack(path: $settingsPath) { search in
+                        Settings.RootView(resolver: resolver, search: search) }
                         .environment(settingsSearchHighlight)
                         .tabItem { Label(
                             "Settings",

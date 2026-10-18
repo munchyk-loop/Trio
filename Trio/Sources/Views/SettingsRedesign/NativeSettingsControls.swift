@@ -70,37 +70,17 @@ struct SettingsLoopModeSheet: View {
     @Binding var selection: DosingMode
     let canSelect: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    HStack(spacing: 12) {
-                        ForEach(DosingMode.userSelectable) { mode in
-                            Button { selection = mode } label: {
-                                VStack(spacing: 12) {
-                                    SettingsLoopModeSymbol(mode: mode, size: 38)
-                                    Text(mode.displayName.replacingOccurrences(of: " ", with: "\n"))
-                                        .font(.headline).multilineTextAlignment(.center)
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 116)
-                                .foregroundStyle(selection == mode ? mode.settingsColor : Color.secondary)
-                                .background(
-                                    selection == mode ? mode.settingsColor.opacity(0.12) : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 22)
-                                )
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 22)
-                                        .strokeBorder(
-                                            selection == mode ? mode.settingsColor : Color.secondary.opacity(0.4),
-                                            lineWidth: selection == mode ? 2 : 0.5
-                                        )
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!canSelect)
-                            .accessibilityLabel(mode.displayName)
-                            .accessibilityAddTraits(selection == mode ? .isSelected : [])
+                    Group {
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(spacing: 12) { modeOptions }
+                        } else {
+                            HStack(spacing: 12) { modeOptions }
                         }
                     }.padding(.vertical, 8)
                 }.listRowBackground(Color.chart)
@@ -135,6 +115,47 @@ struct SettingsLoopModeSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
+    }
+
+    private var modeOptions: some View {
+        ForEach(DosingMode.userSelectable) { mode in
+            Button { selection = mode } label: {
+                VStack(spacing: 12) {
+                    SettingsLoopModeSymbol(mode: mode, size: 38)
+                    Text(mode.displayName.replacingOccurrences(of: " ", with: "\n"))
+                        .font(.headline).multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, minHeight: 116)
+                .foregroundStyle(selection == mode ? mode.settingsColor : Color.secondary)
+                .background(
+                    selection == mode ? mode.settingsColor.opacity(0.12) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 22)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22)
+                        .strokeBorder(
+                            selection == mode ? mode.settingsColor : Color.secondary.opacity(0.4),
+                            lineWidth: selection == mode ? 2 : 0.5
+                        )
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSelect)
+            .accessibilityLabel(mode.displayName)
+            .accessibilityAddTraits(selection == mode ? .isSelected : [])
+        }
+    }
+}
+
+struct SettingsSelectionIndicator: View {
+    let isSelected: Bool
+
+    var body: some View {
+        Image(systemName: "checkmark")
+            .foregroundStyle(Color.tabBar)
+            .frame(width: 24)
+            .opacity(isSelected ? 1 : 0)
+            .accessibilityHidden(true)
     }
 }
 
@@ -191,7 +212,7 @@ struct SettingsHelpSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white)
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.primary)
                         .accessibilityLabel("Close")
                 }
             }
@@ -291,7 +312,7 @@ struct SettingsNumberRow: View {
             }
             .listRowBackground(Color.chart)
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle(LocalizedStringKey(title))
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -173,7 +173,9 @@ extension Onboarding {
                     showingChapterCompletion = .algorithmSettings
                 }
             } message: {
-                Text("Your settings and eligible Dynamic ISF history have been restored. Trio remains in Open Loop. Please review your therapy settings before pairing a pump.")
+                Text(
+                    "Your settings and eligible Dynamic ISF history have been restored. Trio remains in Open Loop. Please review your therapy settings before pairing a pump."
+                )
             }
             .alert("iCloud Restore Failed", isPresented: Binding(
                 get: { state.restoreErrorMessage != nil },

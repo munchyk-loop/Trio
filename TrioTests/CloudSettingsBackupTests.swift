@@ -101,7 +101,11 @@ import Testing
         low.snoozeMinutes = 20
         low.snoozedUntil = Date().addingTimeInterval(600)
         let fallback = SettingsAlertProfile(name: "Default", isFallback: true, alerts: [GlucoseAlert(type: .urgentLow), low])
-        let night = SettingsAlertProfile(name: "Night", schedule: .init(kind: .time, startMinute: 1320, endMinute: 420), alerts: fallback.alerts)
+        let night = SettingsAlertProfile(
+            name: "Night",
+            schedule: .init(kind: .time, startMinute: 1320, endMinute: 420),
+            alerts: fallback.alerts
+        )
         configuration.appConfiguration = .init(
             appearance: .systemDefault, liveActivityOrder: nil,
             glucoseAlerts: fallback.alerts, glucoseAlertConfiguration: .init(), deviceAlertConfigurations: [],
@@ -126,8 +130,7 @@ import Testing
         #expect(throws: BackupError.self) { _ = try makeBackup(invalid).validated() }
     }
 
-    @Test("New backups omit dosing mode and preserve strict validation of the remaining settings")
-    func portableDosingMode() throws {
+    @Test("New backups omit dosing mode and preserve strict validation of the remaining settings") func portableDosingMode() throws {
         var closed = validConfiguration()
         closed.settings.dosingMode = .closed
         var open = closed
@@ -153,8 +156,10 @@ import Testing
         #expect(throws: BackupError.self) { _ = try TrioSettingsBackup.decode(JSONSerialization.data(withJSONObject: object)) }
     }
 
-    @Test("Schema 3 and 4 backups migrate to Open Loop while retaining identity and history", arguments: [3, 4])
-    func migrateLegacyDosingMode(_ schema: Int) throws {
+    @Test(
+        "Schema 3 and 4 backups migrate to Open Loop while retaining identity and history",
+        arguments: [3, 4]
+    ) func migrateLegacyDosingMode(_ schema: Int) throws {
         var configuration = validConfiguration()
         configuration.settings.dosingMode = .closed
         let oldConfiguration = try TrioSettingsBackup.normalized(configuration, preserveDosingMode: true)
@@ -370,7 +375,8 @@ import Testing
         let configuration = validConfiguration()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let fingerprint = SHA256.hash(data: try encoder.encode(LegacyBackupConfiguration(value: configuration))).map { String(format: "%02x", $0) }.joined()
+        let fingerprint = SHA256.hash(data: try encoder.encode(LegacyBackupConfiguration(value: configuration)))
+            .map { String(format: "%02x", $0) }.joined()
         let legacy = try makeBackup(configuration, name: "Old settings", schemaVersion: 2, fingerprint: fingerprint)
         let bytes = try JSONEncoder().encode(legacy)
         let migrated = try TrioSettingsBackup.decode(bytes, expectedFingerprint: fingerprint)
@@ -545,14 +551,18 @@ import Testing
         #expect(throws: BackupError.backupTooLarge) { _ = try TrioCloudBackupStore.snapshot(from: record) }
     }
 
-    @Test("Backup navigation follows Trio's configuration menus and keeps section headings on their screens")
-    func previewSettingsHierarchy() throws {
+    @Test(
+        "Backup navigation follows Trio's configuration menus and keeps section headings on their screens"
+    ) func previewSettingsHierarchy() throws {
         let nodes = BackupSettingsNode.make(from: try makeBackup(validConfiguration()))
-        #expect(nodes.filter { $0.id != "presets" }.map { $0.title.localized } == SettingItems.trioConfig.map(\.title))
+        #expect(nodes.filter { $0.id != "presets" }.map(\.title.localized) == SettingItems.trioConfig.map(\.title))
         let therapy = try #require(nodes.first { $0.id == "therapy" })
         #expect(therapy.navigationTitle == "Therapy Settings")
         #expect(therapy.sections.map(\.title) == ["Basic Settings", "Basic Insulin Rates & Targets"])
-        #expect(therapy.sections.last?.rows.map(\.title) == ["Glucose Targets", "Basal Rates", "Carb Ratios", "Insulin Sensitivities"])
+        #expect(
+            therapy.sections.last?.rows
+                .map(\.title) == ["Glucose Targets", "Basal Rates", "Carb Ratios", "Insulin Sensitivities"]
+        )
         #expect(!therapy.children.flatMap(\.children).contains { $0.id == "trioSettings.dosingMode" })
         let devices = try #require(nodes.first { $0.id == "devices" })
         let watch = try #require(devices.children.first { $0.title == "Smart Watch" })
@@ -588,8 +598,7 @@ import Testing
         #expect(try TrioSettingsBackup.encoded(backup) == before)
     }
 
-    @Test("Backup preview distinguishes glucose targets from carbohydrate alarm thresholds")
-    func previewAlarmAndPresetUnits() throws {
+    @Test("Backup preview distinguishes glucose targets from carbohydrate alarm thresholds") func previewAlarmAndPresetUnits() throws {
         var configuration = validConfiguration()
         configuration.settings.units = .mmolL
         var low = GlucoseAlert(type: .low)
@@ -623,8 +632,7 @@ import Testing
         #expect(find("Notifications/Day & Night Windows/dayStart", in: nodes)?.value == "06:00")
     }
 
-    @Test("Backup preview keeps saved Dynamic ISF history visible after restore eligibility expires")
-    func previewOlderHistory() throws {
+    @Test("Backup preview keeps saved Dynamic ISF history visible after restore eligibility expires") func previewOlderHistory() throws {
         let createdAt = Date().addingTimeInterval(-11 * 86400)
         let backup = try historyBackup([tdd(createdAt.addingTimeInterval(-300), total: 42)], createdAt: createdAt)
         #expect(backup.eligibleTDDHistory().isEmpty)
@@ -637,8 +645,7 @@ import Testing
     }
 
     @MainActor
-    @Test("Exporting a downloaded backup preserves its identity and Dynamic ISF history")
-    func exportDownloadedSnapshot() throws {
+    @Test("Exporting a downloaded backup preserves its identity and Dynamic ISF history") func exportDownloadedSnapshot() throws {
         let createdAt = Date().addingTimeInterval(-2 * 86400)
         var snapshot = try historyBackup([tdd(createdAt.addingTimeInterval(-300))], createdAt: createdAt)
         snapshot.name = "Downloaded Cloud Backup"
@@ -699,9 +706,7 @@ import Testing
         #expect(try Data(contentsOf: queue) == bytes)
         coordinator.automaticEnabled = false
     }
-
 }
-
 
 /// Owns only resources created by this suite instance, including parameterized test cases.
 final class CloudBackupTestResources {
@@ -727,8 +732,7 @@ final class CloudBackupTestResources {
     }
 }
 
-@MainActor
-final class CloudBackupConfigurationBox {
+@MainActor final class CloudBackupConfigurationBox {
     var value: TrioSettingsBackup.Configuration
     init(value: TrioSettingsBackup.Configuration) { self.value = value }
 }
@@ -779,4 +783,3 @@ final class CloudBackupFailingSaveContext: NSManagedObjectContext {
         try super.save()
     }
 }
-

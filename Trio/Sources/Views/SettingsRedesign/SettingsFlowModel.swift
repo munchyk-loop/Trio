@@ -38,10 +38,12 @@ final class SettingsFlowModel: ObservableObject, SettingsObserver, PreferencesOb
         let broadcaster = resolver.resolve(Broadcaster.self)!
         broadcaster.register(SettingsObserver.self, observer: self)
         broadcaster.register(PreferencesObserver.self, observer: self)
-        Task {
-            let sufficient = (try? await resolver.resolve(TDDStorage.self)!.hasSufficientTDD()) ?? false
-            await MainActor.run { self.hasValidTDD = sufficient }
-        }
+        Task { await refreshTDDStatus() }
+    }
+
+    func refreshTDDStatus() async {
+        let sufficient = (try? await resolver.resolve(TDDStorage.self)!.hasSufficientTDD()) ?? false
+        await MainActor.run { self.hasValidTDD = sufficient }
     }
 
     func settingsDidChange(_ settings: TrioSettings) { self.settings = settings }
@@ -52,7 +54,7 @@ final class SettingsFlowModel: ObservableObject, SettingsObserver, PreferencesOb
             var updated = self.manager.settings
             updated[keyPath: key] = value
             self.manager.settings = updated
-            self.settings = updated
+            self.settings = self.manager.settings
         })
     }
 
@@ -61,7 +63,7 @@ final class SettingsFlowModel: ObservableObject, SettingsObserver, PreferencesOb
             var updated = self.manager.preferences
             updated[keyPath: key] = value
             self.manager.preferences = updated
-            self.preferences = updated
+            self.preferences = self.manager.preferences
         })
     }
 
@@ -86,6 +88,16 @@ final class SettingsFlowModel: ObservableObject, SettingsObserver, PreferencesOb
             var profile = self.manager.settings.userProfile ?? SettingsUserProfile()
             profile[keyPath: key] = value
             self.profile.wrappedValue = profile
+        })
+    }
+
+    func bodyMeasurement(_ key: WritableKeyPath<SettingsUserProfile, Double?>) -> Binding<Double?> {
+        Binding(get: { self.userProfile[keyPath: key] }, set: { value in
+            guard value.map({ $0.isFinite && $0 > 0 }) ?? true else {
+                self.error = String(localized: "Enter a height or weight greater than zero.")
+                return
+            }
+            self.profileField(key).wrappedValue = value
         })
     }
 
@@ -129,7 +141,7 @@ final class SettingsFlowModel: ObservableObject, SettingsObserver, PreferencesOb
             guard method == "basic" || self.hasValidTDD else { return }
             var updated = self.manager.preferences
             updated.useNewFormula = method != "basic"
-            updated.sigmoid = method == "sigmoid"
+            if method != "basic" { updated.sigmoid = method == "sigmoid" }
             self.manager.preferences = updated
             self.preferences = updated
         })

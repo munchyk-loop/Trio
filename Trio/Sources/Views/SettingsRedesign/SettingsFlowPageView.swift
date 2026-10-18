@@ -29,7 +29,7 @@ struct SettingsFlowPageView: View {
                 Form { content.listRowBackground(Color.chart).tint(Color.tabBar) }.pickerStyle(.menu)
             }
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle(LocalizedStringKey(page.title))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showLogs) { ShareSheet(activityItems: logItems) }
@@ -55,6 +55,7 @@ struct SettingsFlowPageView: View {
         }
         .task {
             if page == .personalInformation { await unlockPersonalInformation() }
+            if page == .dynamicISF { await model.refreshTDDStatus() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { personalInformationUnlocked = false }
@@ -175,9 +176,9 @@ struct SettingsFlowPageView: View {
                         set: { model.profileField(\.dateOfBirth).wrappedValue = $0 }
                     ), in: ...Date(), displayedComponents: .date)
                 }
-                TextField("Height (cm)", value: model.profileField(\.heightCM), format: .number)
+                TextField("Height (cm)", value: model.bodyMeasurement(\.heightCM), format: .number)
                     .keyboardType(.decimalPad)
-                TextField("Weight (kg)", value: model.profileField(\.weightKG), format: .number)
+                TextField("Weight (kg)", value: model.bodyMeasurement(\.weightKG), format: .number)
                     .keyboardType(.decimalPad)
                 Picker("Sex", selection: model.profileField(\.sex)) {
                     Text("Not Specified").tag("")
@@ -312,7 +313,7 @@ struct SettingsFlowPageView: View {
                         }
                         .listRowBackground(Color.chart).tint(Color.tabBar)
                     }
-                    .settingsBackground().tint(.white)
+                    .settingsBackground().tint(.primary)
                     .navigationTitle("Auto Un-Suspend Pump")
                     .navigationBarTitleDisplayMode(.inline)
                 } label: {
@@ -415,8 +416,10 @@ struct SettingsFlowPageView: View {
                     detail: "One multiplier applies to the highest scheduled basal rate; the other applies to the currently scheduled basal rate. Both safeguards remain independently enforced."
                 )
             }
+            .listRowBackground(Color.chart)
+            .tint(Color.tabBar)
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle("Temporary Basal Rate")
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -32,7 +32,7 @@ struct SettingsAlertProfilesView: View {
             }
         }
         .listSectionSpacing(24)
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle("Glucose Alerts")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -47,7 +47,7 @@ struct SettingsAlertProfilesView: View {
                         schedule: .init(kind: .time),
                         alerts: alerts
                     )
-                } label: { Image(systemName: "plus") }.tint(.white)
+                } label: { Image(systemName: "plus") }.tint(.primary)
                     .accessibilityLabel("Add Alert Profile")
             }
         }
@@ -190,12 +190,13 @@ extension SettingsAlertProfile {
         case .time:
             if schedule.weekdays.count == 7 { return String(localized: "Every Day") }
             if schedule.weekdays == Set(2 ... 6) { return String(localized: "Weekdays") }
-            return schedule.weekdays.sorted().map { Calendar.current.shortWeekdaySymbols[$0 - 1] }.joined(separator: ", ")
+            return schedule.weekdays.sorted().filter { (1 ... 7).contains($0) }
+                .map { Calendar.current.shortWeekdaySymbols[$0 - 1] }.joined(separator: ", ")
         }
     }
 
     private func clock(_ minute: Int) -> String {
-        Calendar.current.startOfDay(for: Date()).addingTimeInterval(TimeInterval(minute * 60))
+        SettingsAlertSchedule.pickerDate(for: minute)
             .formatted(date: .omitted, time: .shortened)
     }
 }
@@ -204,11 +205,22 @@ struct SettingsAlertSummaryRow: View {
     let alert: GlucoseAlert
     let units: GlucoseUnits
     var showOff = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout())
+        layout {
             Text(alert.type.settingsTitle)
-            Spacer(minLength: 8)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            details
+        }
+        .font(.body)
+    }
+
+    private var details: some View {
+        HStack {
             if showOff && !alert.shouldEvaluate { Text("Off").foregroundStyle(.secondary) }
             else {
                 Image(systemName: alert.settingsSoundMode.symbol).accessibilityLabel(alert.settingsSoundMode.title)
@@ -221,7 +233,6 @@ struct SettingsAlertSummaryRow: View {
                 }
             }
         }
-        .font(.body)
     }
 }
 
@@ -281,10 +292,10 @@ struct SettingsAlertProfileEditor: View {
                                                 "figure.run"
                                             ],
                                             id: \.self
-                                        ) { Image(systemName: $0).tag($0) }
+                                        ) { Image(systemName: $0).accessibilityLabel(Self.symbolTitle($0)).tag($0) }
                                     }.pickerStyle(.menu)
                                 }.listRowBackground(Color.chart).tint(Color.tabBar)
-                            }.settingsBackground().tint(.white).navigationTitle("Name")
+                            }.settingsBackground().tint(.primary).navigationTitle("Name")
                         } label: { Label(working.name, systemImage: working.displaySymbol) }
                     }.listRowBackground(Color.chart).tint(Color.tabBar)
                     Section("Schedule") {
@@ -322,12 +333,12 @@ struct SettingsAlertProfileEditor: View {
                     }
                 }.listRowBackground(Color.chart).tint(Color.tabBar)
             }
-            .settingsBackground().tint(.white)
+            .settingsBackground().tint(.primary)
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white).accessibilityLabel("Cancel")
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.primary).accessibilityLabel("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { store.save(working)
@@ -340,6 +351,17 @@ struct SettingsAlertProfileEditor: View {
                 SettingsAlertScheduleEditor(initial: working.schedule, store: store) { working.schedule = $0 }
                     .presentationDetents([.large]).presentationDragIndicator(.hidden)
             }
+        }
+    }
+
+    private static func symbolTitle(_ symbol: String) -> Text {
+        switch symbol {
+        case "sun.max.fill": return Text("Sun")
+        case "moon.fill": return Text("Moon")
+        case "briefcase.fill": return Text("Work")
+        case "house.fill": return Text("Home")
+        case "figure.run": return Text("Exercise")
+        default: return Text("Bell")
         }
     }
 
@@ -361,6 +383,7 @@ struct SettingsAlertScheduleEditor: View {
     let onSave: (SettingsAlertSchedule) -> Void
     @State private var working: SettingsAlertSchedule
     @State private var query = ""
+    @State private var locationSearchQuery: String?
     @State private var places: [MKMapItem] = []
     @State private var searchError: String?
     @Environment(\.dismiss) private var dismiss
@@ -417,7 +440,8 @@ struct SettingsAlertScheduleEditor: View {
                             }
                         } footer: {
                             Text(
-                                working.weekdays.sorted().map { Calendar.current.shortWeekdaySymbols[$0 - 1] }
+                                working.weekdays.sorted().filter { (1 ... 7).contains($0) }
+                                    .map { Calendar.current.shortWeekdaySymbols[$0 - 1] }
                                     .joined(separator: ", ")
                             ) }
                             .listRowBackground(Color.chart).tint(Color.tabBar)
@@ -425,12 +449,18 @@ struct SettingsAlertScheduleEditor: View {
                     if working.kind == .location {
                         Section {
                             TextField("Search Locations", text: $query).submitLabel(.search)
-                                .onSubmit { Task { await searchPlaces() } }
+                                .onSubmit { locationSearchQuery = query.trimmingCharacters(in: .whitespacesAndNewlines) }
+                                .onChange(of: query) { _, _ in
+                                    locationSearchQuery = nil
+                                    places = []
+                                    searchError = nil
+                                }
                             ForEach(Array(places.enumerated()), id: \.offset) { _, place in
                                 Button(place.name ?? String(localized: "Location")) {
                                     working.locationName = place.name ?? query
                                     working.latitude = place.placemark.coordinate.latitude
                                     working.longitude = place.placemark.coordinate.longitude
+                                    locationSearchQuery = nil
                                     places = []
                                 }
                             }
@@ -448,6 +478,7 @@ struct SettingsAlertScheduleEditor: View {
                                         radius: working.radius
                                     ).foregroundStyle(Color.tabBar.opacity(0.2))
                                 }
+                                .id([working.latitude, working.longitude])
                                 .frame(height: 220)
                                 Stepper("Radius: \(Int(working.radius)) m", value: $working.radius, in: 100 ... 2000, step: 100)
                             }
@@ -466,12 +497,22 @@ struct SettingsAlertScheduleEditor: View {
                     }
                 }.listRowBackground(Color.chart).tint(Color.tabBar)
             }
-            .settingsBackground().tint(.white)
+            .settingsBackground().tint(.primary)
             .navigationTitle("Schedule")
             .navigationBarTitleDisplayMode(.inline)
+            .task(id: locationSearchQuery) {
+                guard let query = locationSearchQuery, !query.isEmpty else { return }
+                await searchPlaces(query: query)
+            }
+            .onChange(of: working.kind) { _, kind in
+                if kind != .location {
+                    locationSearchQuery = nil
+                    places = []
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.white).accessibilityLabel("Cancel")
+                    Button { dismiss() } label: { Image(systemName: "xmark") }.tint(.primary).accessibilityLabel("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button { onSave(working)
@@ -497,6 +538,7 @@ struct SettingsAlertScheduleEditor: View {
             case "daily": working.weekdays = Set(1 ... 7)
             case "weekdays": working.weekdays = Set(2 ... 6)
             case "weekends": working.weekdays = [1, 7]
+            case "weekly": working.weekdays = [Calendar.current.component(.weekday, from: Date())]
             default: break
             }
         })
@@ -504,18 +546,26 @@ struct SettingsAlertScheduleEditor: View {
 
     private func minuteBinding(_ key: WritableKeyPath<SettingsAlertSchedule, Int>) -> Binding<Date> {
         Binding(get: {
-            Calendar.current.startOfDay(for: Date()).addingTimeInterval(TimeInterval(working[keyPath: key] * 60))
+            SettingsAlertSchedule.pickerDate(for: working[keyPath: key])
         }, set: {
             working[keyPath: key] = Calendar.current.component(.hour, from: $0) * 60 + Calendar.current
                 .component(.minute, from: $0)
         })
     }
 
-    private func searchPlaces() async {
+    private func searchPlaces(query: String) async {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
-        do { places = try await MKLocalSearch(request: request).start().mapItems
-            searchError = nil } catch { searchError = error.localizedDescription }
+        searchError = nil
+        do {
+            let results = try await MKLocalSearch(request: request).start().mapItems
+            guard !Task.isCancelled, query == self.query.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+            places = results
+        } catch {
+            if !Task.isCancelled, query == self.query.trimmingCharacters(in: .whitespacesAndNewlines) {
+                searchError = error.localizedDescription
+            }
+        }
     }
 }
 
@@ -585,7 +635,7 @@ struct SettingsProfileAlertEditor: View {
                 }
             }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle(working.type == .low ? String(localized: "Low Glucose Alert") : working.type.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -641,20 +691,16 @@ struct SettingsAlertSoundView: View {
                     } label: {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label(choice.title, systemImage: choice.symbol).font(.headline).lineLimit(1)
-                                    .minimumScaleFactor(0.8)
+                                Label(choice.title, systemImage: choice.symbol).font(.headline)
                                 Text(choice.detail).font(.subheadline).foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }.frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.tabBar)
-                                .frame(width: 24)
-                                .opacity(mode == choice ? 1 : 0)
-                                .accessibilityHidden(true)
+                            SettingsSelectionIndicator(isSelected: mode == choice)
                         }.padding(.vertical, 8)
                     }
                     .foregroundStyle(Color.primary)
                     .disabled(choice == .soundAlways && delivery == .timeSensitive)
+                    .accessibilityAddTraits(mode == choice ? .isSelected : [])
                 }
             }.listRowBackground(Color.chart).tint(Color.tabBar)
             if mode != .vibrateAlways {
@@ -665,7 +711,7 @@ struct SettingsAlertSoundView: View {
                 }.listRowBackground(Color.chart).tint(Color.tabBar)
             }
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle("Sound or Vibrate")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { previewer.stop() }
@@ -699,11 +745,7 @@ struct SettingsAlertToneList: View {
                         HStack {
                             Text(AlarmSoundCatalog.displayName(for: sound))
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.tabBar)
-                                .frame(width: 24)
-                                .opacity(filename == sound ? 1 : 0)
-                                .accessibilityHidden(true)
+                            SettingsSelectionIndicator(isSelected: filename == sound)
                         }
                     }
                     .foregroundStyle(Color.primary)
@@ -711,7 +753,7 @@ struct SettingsAlertToneList: View {
                 }
             }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle("Sound")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { previewer.stop() }

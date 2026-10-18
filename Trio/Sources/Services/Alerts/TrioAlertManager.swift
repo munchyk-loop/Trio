@@ -189,7 +189,8 @@ final class BaseTrioAlertManager: TrioAlertManager, Injectable {
         Task { @MainActor in
             // AlarmKit pierces silent/Focus and survives app suspension.
             if alarmScheduler == nil { alarmScheduler = CriticalAlertAlarmScheduler() }
-            let useAlarmKit = (alert.metadata?["settings.delivery"]?.wrapped as? String) != SettingsAlertDelivery.critical.rawValue
+            let useAlarmKit = (alert.metadata?["settings.delivery"]?.wrapped as? String) != SettingsAlertDelivery.critical
+                .rawValue
             let scheduled = useAlarmKit && (alarmScheduler?.scheduleAlarm(for: alert) { [weak self] in
                 Task { @MainActor in self?.playAudioFallback(soundNamed: soundName) }
             } ?? false)
@@ -532,7 +533,8 @@ extension BaseTrioAlertManager: TrioModalAlertResponder, TrioUserNotificationAle
         let customMinutes = GlucoseAlertsStore.shared.alerts.first {
             identifier.alertIdentifier.hasSuffix($0.id.uuidString)
         }?.snoozeMinutes
-        let configuredDuration = duration == 15 * 60 ? customMinutes.map { TimeInterval(max(1, min($0, 60)) * 60) } ?? duration : duration
+        let configuredDuration = duration == 15 * 60 ? customMinutes
+            .map { TimeInterval(max(1, min($0, 60)) * 60) } ?? duration : duration
         let untilDate = configuredDuration > 0 ? Date().addingTimeInterval(configuredDuration) : .distantPast
         if let glucoseType = GlucoseAlertType(slug: identifier.alertIdentifier) {
             broadcaster.notify(GlucoseSnoozeObserver.self, on: .main) { (observer: GlucoseSnoozeObserver) in

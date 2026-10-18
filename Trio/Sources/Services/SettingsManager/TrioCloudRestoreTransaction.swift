@@ -185,6 +185,4 @@ extension TrioCloudSettingsRestore {
         try FileManager.default.removeItem(at: journalURL)
         if context == nil { await CoreDataStack.shared.fetchPersistentHistory() }
     }
-
-
 }

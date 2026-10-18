@@ -71,7 +71,7 @@ struct SettingsSystemAlertsView: View {
                 }
             }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle("System Alerts")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: working) { _, value in
@@ -106,24 +106,22 @@ struct SettingsAlertDeliveryView: View {
                     Button { selection = delivery } label: {
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Label { Text(delivery.title).lineLimit(1).minimumScaleFactor(0.8) } icon: {
+                                Label { Text(delivery.title) } icon: {
                                     Image(systemName: delivery.symbol).foregroundStyle(delivery.iconColor)
                                 }
                                 .font(.headline)
                                 Text(delivery.detail).font(.subheadline).foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }.frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.tabBar)
-                                .frame(width: 24)
-                                .opacity(selection == delivery ? 1 : 0)
-                                .accessibilityHidden(true)
+                            SettingsSelectionIndicator(isSelected: selection == delivery)
                         }.padding(.vertical, 8)
-                    }.foregroundStyle(Color.primary)
+                    }
+                    .foregroundStyle(Color.primary)
+                    .accessibilityAddTraits(selection == delivery ? .isSelected : [])
                 }
             }.listRowBackground(Color.chart).tint(Color.tabBar)
         }
-        .settingsBackground().tint(.white)
+        .settingsBackground().tint(.primary)
         .navigationTitle("Delivery")
         .navigationBarTitleDisplayMode(.inline)
     }

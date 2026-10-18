@@ -108,7 +108,7 @@ enum TrioCloudSettingsRestore {
                 tddHistory: snapshot.eligibleTDDHistory(),
                 preflight: {
                     guard deviceManager.pumpManager == nil else { throw BackupError.pumpNotReady }
-                    if onboarding && !OnboardingManager.shared.shouldShowOnboarding {
+                    if onboarding, !OnboardingManager.shared.shouldShowOnboarding {
                         throw BackupError.notOnboarding
                     }
                 },
@@ -199,6 +199,4 @@ enum TrioCloudSettingsRestore {
         result.settings.dosingMode = .open
         return result
     }
-
-
 }

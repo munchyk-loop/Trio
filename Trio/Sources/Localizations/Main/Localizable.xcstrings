@@ -1618,6 +1618,7 @@
       }
     },
     " »%@« " : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -1746,6 +1747,9 @@
           }
         }
       }
+    },
+    " (+1 Day)" : {
+
     },
     " %@" : {
       "localizations" : {
@@ -5054,6 +5058,9 @@
           }
         }
       }
+    },
+    "–" : {
+
     },
     "– –" : {
       "localizations" : {
@@ -8505,6 +8512,16 @@
         }
       }
     },
+    "%@ – %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@ %3$@"
+          }
+        }
+      }
+    },
     "%@ (%@-%@)" : {
       "localizations" : {
         "bg" : {
@@ -10911,6 +10928,7 @@
       }
     },
     "%@: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -13148,6 +13166,9 @@
           }
         }
       }
+    },
+    "%lld backup operation(s) pending." : {
+
     },
     "%lld g" : {
       "localizations" : {
@@ -28022,6 +28043,9 @@
         }
       }
     },
+    "A full-screen alarm that continues alerting until dismissed. Can override Focus and Silent mode." : {
+
+    },
     "A heartbeat tells Trio to start a loop cycle. This is required for closed loop." : {
       "localizations" : {
         "bg" : {
@@ -28419,6 +28443,9 @@
         }
       }
     },
+    "A momentary banner that appears on screen briefly. Prioritized at the top of Notification Center. Can override Focus, but cannot override Silent mode." : {
+
+    },
     "A new version (%@) is available. It is recommended to update." : {
       "comment" : "Message for update available alert",
       "localizations" : {
@@ -28550,7 +28577,11 @@
         }
       }
     },
+    "A persistent banner that remains on screen until dismissed. Creates a more noticeable interruption. Prioritized at the top of Notification Center. Can override Focus and Silent mode." : {
+
+    },
     "A pre-condition to have Temp Targets adjust Sensitivity is that the respective Target Behavior settings High Temp Target Raises Sensitivity or Low Temp Target Lowers Sensitivity are set to enabled." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -28681,6 +28712,7 @@
       }
     },
     "A Temporary Target replaces the current Target Glucose specified in Therapy settings." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -28809,6 +28841,9 @@
           }
         }
       }
+    },
+    "A Temporary Target replaces your scheduled glucose target for the selected duration." : {
+
     },
     "Abbreviation for 'Deviation'. How much the actual glucose change deviated from the BGI." : {
       "localizations" : {
@@ -30776,6 +30811,9 @@
         }
       }
     },
+    "Active Profiles" : {
+
+    },
     "Active Time" : {
       "comment" : "description label for active time pod details rowdescription label for active time pod details row",
       "extractionState" : "manual",
@@ -31315,6 +31353,7 @@
       }
     },
     "Add a CGM and pump to enable automated insulin delivery" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -31704,6 +31743,9 @@
           }
         }
       }
+    },
+    "Add Alert Profile" : {
+
     },
     "Add and set a bolus option for meals that absorb quickly." : {
       "localizations" : {
@@ -38717,6 +38759,9 @@
         }
       }
     },
+    "Adjustment Method" : {
+
+    },
     "Adjustment Tabs" : {
       "localizations" : {
         "bg" : {
@@ -42561,6 +42606,9 @@
           }
         }
       }
+    },
+    "Allow Background Location" : {
+
     },
     "Allow Bolusing with Shortcuts" : {
       "localizations" : {
@@ -46794,6 +46842,12 @@
         }
       }
     },
+    "Always" : {
+
+    },
+    "Always Allow Auto Boluses" : {
+
+    },
     "Always Color Glucose Value (green, yellow etc)" : {
       "comment" : "UI/UX option",
       "extractionState" : "manual",
@@ -49034,6 +49088,9 @@
         }
       }
     },
+    "App" : {
+
+    },
     "App diagnostic insights — based on crash reports only — help us enhance app stability, ensure safety for all users, and quickly identify and resolve critical issues." : {
       "localizations" : {
         "bg" : {
@@ -49554,6 +49611,15 @@
           }
         }
       }
+    },
+    "App Info" : {
+
+    },
+    "App Language" : {
+
+    },
+    "App Logs" : {
+
     },
     "App Version" : {
       "localizations" : {
@@ -53224,6 +53290,12 @@
         }
       }
     },
+    "Auto Bolus" : {
+
+    },
+    "Auto Un-Suspend Pump" : {
+
+    },
     "Auto-sensitivity (Autosens) adjusts insulin delivery based on observed sensitivity or resistance." : {
       "localizations" : {
         "bg" : {
@@ -53614,7 +53686,11 @@
         }
       }
     },
+    "Automated Insulin" : {
+
+    },
     "Automated Insulin Delivery" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -53881,6 +53957,12 @@
           }
         }
       }
+    },
+    "Automatic Backup" : {
+
+    },
+    "Automatic Backups" : {
+
     },
     "Autosens" : {
       "localizations" : {
@@ -57422,6 +57504,9 @@
         }
       }
     },
+    "Back Up Now" : {
+
+    },
     "Backdated carbs (%lld g) included in COB calculation" : {
       "localizations" : {
         "bg" : {
@@ -58887,6 +58972,15 @@
         }
       }
     },
+    "Backup & Restore" : {
+
+    },
+    "Backup Details" : {
+
+    },
+    "Backup Retention" : {
+
+    },
     "Basal" : {
       "comment" : "Treatment label in history for scheduled basal",
       "localizations" : {
@@ -59017,6 +59111,9 @@
           }
         }
       }
+    },
+    "Basal Adjustment Method" : {
+
     },
     "Basal Insulin and Sensitivity ratio" : {
       "extractionState" : "manual",
@@ -60463,6 +60560,9 @@
         }
       }
     },
+    "Basic (Autosens)" : {
+
+    },
     "Basic Insulin Rates & Targets" : {
       "localizations" : {
         "bg" : {
@@ -61647,6 +61747,9 @@
           }
         }
       }
+    },
+    "Bell" : {
+
     },
     "below" : {
       "comment" : "A label describing a glucose value is below.",
@@ -64153,6 +64256,9 @@
         }
       }
     },
+    "Body Profile" : {
+
+    },
     "Bolus" : {
       "comment" : "Treatment type\nWatch App Treatment Option 'Bolus'",
       "localizations" : {
@@ -66515,6 +66621,9 @@
         }
       }
     },
+    "Bolus Label Threshold" : {
+
+    },
     "Bolus limit cannot be fetched from phone!" : {
       "localizations" : {
         "bg" : {
@@ -66905,6 +67014,9 @@
           }
         }
       }
+    },
+    "Bolus Screen" : {
+
     },
     "Bolus Snooze DIA Divisor" : {
       "comment" : "Headline \"Bolus Snooze DIA Divisor\"",
@@ -68240,6 +68352,7 @@
       }
     },
     "BRANCH: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -68499,6 +68612,9 @@
           }
         }
       }
+    },
+    "Build" : {
+
     },
     "Build Number" : {
       "localizations" : {
@@ -75234,6 +75350,9 @@
         }
       }
     },
+    "Caregivers" : {
+
+    },
     "Category" : {
       "localizations" : {
         "bg" : {
@@ -76536,6 +76655,9 @@
         }
       }
     },
+    "CGM Reliability" : {
+
+    },
     "CGM Sensor Expired" : {
       "comment" : "Title of an alert that informs the user that their CGM sensor is expired.",
       "localizations" : {
@@ -77745,6 +77867,9 @@
         }
       }
     },
+    "Change Photo" : {
+
+    },
     "Change Pod now. Insulin delivery will stop in %1$@ or when no more insulin remains." : {
       "comment" : "Format string for the action string on pod status page when pod expired. (1: service time remaining)",
       "extractionState" : "manual",
@@ -77882,6 +78007,9 @@
           }
         }
       }
+    },
+    "Change Profile Photo" : {
+
     },
     "Chapter %1$d of %2$d, %3$@" : {
       "comment" : "Accessibility: onboarding progress",
@@ -79193,6 +79321,9 @@
         }
       }
     },
+    "Checks run while Trio is running or the next time you open it. Unchanged settings do not create another backup." : {
+
+    },
     "Chime" : {
       "comment" : "Name of a sound file.",
       "localizations" : {
@@ -79323,6 +79454,9 @@
           }
         }
       }
+    },
+    "Choose a backup to restore." : {
+
     },
     "Choose a value that covers your highest insulin needs — think about a correction for a very high glucose reading plus your biggest meal bolus. This gives Trio room to work while keeping you safe." : {
       "localizations" : {
@@ -80233,6 +80367,12 @@
           }
         }
       }
+    },
+    "Choose Photo" : {
+
+    },
+    "Choose the maximum number of backups to keep in iCloud. When this limit is reached, Trio will automatically delete the oldest backup to make room for a new one." : {
+
     },
     "Choose to display eA1c and GMI in percent or mmol/mol." : {
       "localizations" : {
@@ -82328,6 +82468,9 @@
         }
       }
     },
+    "Close backup details" : {
+
+    },
     "Closed loop" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -83507,6 +83650,9 @@
         }
       }
     },
+    "Color Style" : {
+
+    },
     "Coming soon." : {
       "localizations" : {
         "bg" : {
@@ -83898,6 +84044,9 @@
           }
         }
       }
+    },
+    "Components" : {
+
     },
     "Cone" : {
       "localizations" : {
@@ -85636,6 +85785,7 @@
       }
     },
     "Configure Yourself" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -87337,6 +87487,7 @@
       }
     },
     "Connected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -87465,6 +87616,9 @@
           }
         }
       }
+    },
+    "Connected Device" : {
+
     },
     "Connected Devices" : {
       "comment" : "A label displayed above the list of connected Garmin watches.",
@@ -88783,6 +88937,9 @@
         }
       }
     },
+    "Contents" : {
+
+    },
     "Continue" : {
       "comment" : "Bolus View Continue Button",
       "extractionState" : "manual",
@@ -89840,6 +89997,7 @@
       }
     },
     "Copy version information" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -91149,6 +91307,9 @@
         }
       }
     },
+    "Create Backup" : {
+
+    },
     "Create Events in Calendar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -91285,6 +91446,9 @@
           }
         }
       }
+    },
+    "Created" : {
+
     },
     "Critical" : {
       "comment" : "Name of the critical alarm sound.",
@@ -92467,6 +92631,7 @@
     },
     "Current release" : {
       "comment" : "Marks the release notes entry matching the running build",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -94327,6 +94492,9 @@
         }
       }
     },
+    "Daily" : {
+
+    },
     "Daily glucose distribution chart" : {
       "localizations" : {
         "bg" : {
@@ -95756,6 +95924,9 @@
           }
         }
       }
+    },
+    "Date of Birth" : {
+
     },
     "Day" : {
       "extractionState" : "manual",
@@ -105720,6 +105891,9 @@
         }
       }
     },
+    "Delete Backup?" : {
+
+    },
     "Delete Carb Equivalents?" : {
       "comment" : "Alert text",
       "extractionState" : "manual",
@@ -107077,6 +107251,9 @@
         }
       }
     },
+    "Delete Profile" : {
+
+    },
     "Delete Selected Preset" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -107604,6 +107781,9 @@
           }
         }
       }
+    },
+    "Delivery" : {
+
     },
     "Delivery limits" : {
       "extractionState" : "manual",
@@ -108134,6 +108314,7 @@
       }
     },
     "Depending on your Target Behavior settings (see Settings > the Algorithm > Target Behavior), these temporary glucose targets can also raise Insulin Sensitivity for high targets or lower sensitivity for low targets." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -111567,6 +111748,9 @@
         }
       }
     },
+    "Disabled Profiles" : {
+
+    },
     "Disables SMBs if last two glucose values differ by more than this percent." : {
       "localizations" : {
         "bg" : {
@@ -112354,6 +112538,9 @@
           }
         }
       }
+    },
+    "Display" : {
+
     },
     "Display and allow Fat and Protein entries" : {
       "comment" : "UI/UX option",
@@ -114089,6 +114276,9 @@
           }
         }
       }
+    },
+    "Display Options" : {
+
     },
     "Display Predictions" : {
       "comment" : "UI/UX option",
@@ -117009,6 +117199,7 @@
       }
     },
     "Dosing Mode decides how much of Trio's insulin dosing decision is actually sent to your pump. Every mode still needs an active CGM sensor session and a connected pump." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -119093,6 +119284,12 @@
         }
       }
     },
+    "Dynamic ISF automatically adjusts your ISF to better keep you in range, even as your insulin needs and circumstances change." : {
+
+    },
+    "Dynamic ISF history is included in backups, but new history alone does not trigger a backup." : {
+
+    },
     "Dynamic ISF is off, so those terms will not show up." : {
       "localizations" : {
         "bg" : {
@@ -120402,6 +120599,9 @@
         }
       }
     },
+    "eA1c/GMI" : {
+
+    },
     "eA1c/GMI Display Unit" : {
       "localizations" : {
         "bg" : {
@@ -120791,6 +120991,9 @@
           }
         }
       }
+    },
+    "Edit %@ alert profile" : {
+
     },
     "edit calibration clicked" : {
       "extractionState" : "manual",
@@ -121456,6 +121659,9 @@
           }
         }
       }
+    },
+    "Edit Profile" : {
+
     },
     "Edit settings json" : {
       "extractionState" : "manual",
@@ -123849,6 +124055,12 @@
           }
         }
       }
+    },
+    "Enable location access in iOS Settings to activate location-based alert profiles." : {
+
+    },
+    "Enable Location Profiles" : {
+
     },
     "Enable Quick-Pick Treatments" : {
       "comment" : "Label for the hint displayed in the settings.",
@@ -130286,6 +130498,9 @@
         }
       }
     },
+    "Enter a height or weight greater than zero." : {
+
+    },
     "Enter Meal Preset Name" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -131469,6 +131684,9 @@
           }
         }
       }
+    },
+    "Erratic CGM → Raise Target" : {
+
     },
     "Error" : {
       "comment" : "Error title",
@@ -133732,6 +133950,9 @@
         }
       }
     },
+    "Every Day" : {
+
+    },
     "Everything you enter here can be adjusted later in the app." : {
       "localizations" : {
         "bg" : {
@@ -134129,6 +134350,9 @@
           }
         }
       }
+    },
+    "Exercise" : {
+
     },
     "Exercise Mode" : {
       "comment" : "Headline \"Exercise Mode\"",
@@ -134680,6 +134904,9 @@
           }
         }
       }
+    },
+    "Export Backup File" : {
+
     },
     "Export Categories" : {
       "localizations" : {
@@ -139067,6 +139294,9 @@
         }
       }
     },
+    "Falling Fast" : {
+
+    },
     "falling quickly" : {
       "comment" : "Accessibility: glucose trend",
       "localizations" : {
@@ -139328,6 +139558,9 @@
           }
         }
       }
+    },
+    "Fast Absorption" : {
+
     },
     "Fat" : {
       "comment" : "Add Fat",
@@ -141045,6 +141278,9 @@
         }
       }
     },
+    "Female" : {
+
+    },
     "Fetch" : {
       "localizations" : {
         "bg" : {
@@ -141434,6 +141670,9 @@
           }
         }
       }
+    },
+    "Find a setting by name or description." : {
+
     },
     "Fine-tune the ring’s Width and Gap to suit your design preferences." : {
       "localizations" : {
@@ -142474,6 +142713,9 @@
           }
         }
       }
+    },
+    "Fires when recent glucose readings are falling at or above the configured rate." : {
+
     },
     "Fires when the algorithm suggests to eat at least this many grams of carbs to avoid a low." : {
       "localizations" : {
@@ -143653,6 +143895,9 @@
           }
         }
       }
+    },
+    "For 6 hrs After Carb Entry" : {
+
     },
     "For 45 g of carbs, you would need:" : {
       "localizations" : {
@@ -144838,6 +145083,9 @@
         }
       }
     },
+    "For your safety, urgent System Alerts cannot be turned off." : {
+
+    },
     "Forcing loop…" : {
       "localizations" : {
         "bg" : {
@@ -145358,6 +145606,9 @@
           }
         }
       }
+    },
+    "Forecast Style" : {
+
     },
     "Forecasts" : {
       "localizations" : {
@@ -146422,6 +146673,7 @@
       }
     },
     "found." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -147079,6 +147331,9 @@
         }
       }
     },
+    "Full Automation: Trio will reduce or pause basal delivery to help prevent low glucose and increase insulin delivery to correct high glucose." : {
+
+    },
     "Full Bolus" : {
       "comment" : "For the  Bolus View pop-up",
       "localizations" : {
@@ -147212,6 +147467,7 @@
     },
     "Furthermore, you could adjust that sensitivity change independently from the Half Basal Exercise Target specified in Algorithm > Target Behavior settings by deliberately setting a customized Insulin Percentage for a Temp Target." : {
       "comment" : "A paragraph explaining how to set a custom insulin percentage for a temporary target.",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -149832,6 +150088,9 @@
           }
         }
       }
+    },
+    "Glucose Alerts" : {
+
     },
     "Glucose and forecast chart" : {
       "comment" : "Accessibility: chart summary",
@@ -157075,6 +157334,9 @@
         }
       }
     },
+    "Grid Lines" : {
+
+    },
     "h" : {
       "comment" : "Abbreviation for Hours\nabbreviation for hours\nh",
       "localizations" : {
@@ -158146,6 +158408,9 @@
           }
         }
       }
+    },
+    "Height (cm)" : {
+
     },
     "Help" : {
       "comment" : "Help sheet title",
@@ -161312,6 +161577,9 @@
         }
       }
     },
+    "Historical %lld%%" : {
+
+    },
     "History" : {
       "comment" : "Header",
       "localizations" : {
@@ -161710,6 +161978,9 @@
           }
         }
       }
+    },
+    "Home Screen" : {
+
     },
     "Home Statistics Panel" : {
       "localizations" : {
@@ -162239,6 +162510,12 @@
           }
         }
       }
+    },
+    "Horizontal" : {
+
+    },
+    "Horizontal & Vertical" : {
+
     },
     "Horizontal Scroll View Visible hours" : {
       "comment" : "UI/UX option",
@@ -164347,6 +164624,15 @@
           }
         }
       }
+    },
+    "iCloud Backup" : {
+
+    },
+    "iCloud Restore" : {
+
+    },
+    "iCloud Restore Failed" : {
+
     },
     "If \"Display IOB and COB\" is also enabled, \"IOB\" and \"COB\" will be replaced with the following emojis:" : {
       "localizations" : {
@@ -167752,6 +168038,9 @@
         }
       }
     },
+    "Import Backup File" : {
+
+    },
     "Import Error" : {
       "comment" : "Import Error HeadlineImport Error Headline",
       "extractionState" : "manual",
@@ -167891,6 +168180,7 @@
       }
     },
     "Import Failed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -168829,6 +169119,7 @@
       }
     },
     "Important: Autosens Min and Autosens Max do not affect Temp Targets in the same way. Autosens Max limits how much insulin can be increased, but Autosens Min does not remove the 15% minimum when insulin is reduced." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -168960,6 +169251,7 @@
     },
     "Importing Settings..." : {
       "comment" : "Progress text when importing settings via Nightscout",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -171593,6 +171885,9 @@
           }
         }
       }
+    },
+    "Insulin Adjustment" : {
+
     },
     "Insulin Chart Type" : {
       "localizations" : {
@@ -175839,6 +176134,9 @@
         }
       }
     },
+    "iOS supports up to 20 monitored locations per app." : {
+
+    },
     "is running" : {
       "localizations" : {
         "bg" : {
@@ -176229,6 +176527,9 @@
           }
         }
       }
+    },
+    "ISF Adjustment" : {
+
     },
     "ISF and CR" : {
       "localizations" : {
@@ -177660,6 +177961,9 @@
           }
         }
       }
+    },
+    "Language" : {
+
     },
     "Largest basal rate allowed." : {
       "localizations" : {
@@ -179116,6 +179420,9 @@
         }
       }
     },
+    "Last successful backup: %@" : {
+
+    },
     "Last Updated" : {
       "comment" : "Live Activity widget icon label for Last Updated",
       "localizations" : {
@@ -179379,6 +179686,7 @@
       }
     },
     "Latest dev: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -179509,6 +179817,7 @@
       }
     },
     "Latest dev: Fetching..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -179769,6 +180078,7 @@
       }
     },
     "Latest version: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -179899,6 +180209,7 @@
       }
     },
     "Latest version: Fetching..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -184116,6 +184427,15 @@
         }
       }
     },
+    "Loading backup…" : {
+
+    },
+    "Loading Photo" : {
+
+    },
+    "Local Backup" : {
+
+    },
     "Local glucose source" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -184252,6 +184572,15 @@
           }
         }
       }
+    },
+    "Location" : {
+
+    },
+    "Location Name" : {
+
+    },
+    "Location profiles use region entry and exit events. Allow Always location access for automatic activation while Trio is in the background." : {
+
     },
     "Lock Screen Widget Style" : {
       "localizations" : {
@@ -186083,6 +186412,9 @@
         }
       }
     },
+    "Logarithmic and Sigmoid methods become available after sufficient insulin history has been collected. This can take up to 7 days." : {
+
+    },
     "Logarithmic Dynamic ISF" : {
       "localizations" : {
         "bg" : {
@@ -187134,6 +187466,15 @@
           }
         }
       }
+    },
+    "Loop Mode" : {
+
+    },
+    "Loop Mode, %@" : {
+
+    },
+    "Loop Modes" : {
+
     },
     "loop overdue" : {
       "comment" : "Accessibility: loop status",
@@ -189642,6 +189983,9 @@
         }
       }
     },
+    "Low Glucose Alert" : {
+
+    },
     "Low Glucose Soon" : {
       "localizations" : {
         "bg" : {
@@ -189774,6 +190118,7 @@
     },
     "Low Glucose Suspend" : {
       "comment" : "Dosing mode",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -190967,6 +191312,9 @@
         }
       }
     },
+    "Lower Limit" : {
+
+    },
     "Lower limit of the Autosens Ratio." : {
       "localizations" : {
         "bg" : {
@@ -191356,6 +191704,9 @@
           }
         }
       }
+    },
+    "Lower Target When Resistant" : {
+
     },
     "m" : {
       "comment" : "Abbreviation for Minutes\nabbreviation for minutes",
@@ -192017,6 +192368,9 @@
         }
       }
     },
+    "Male" : {
+
+    },
     "Manage iOS Preferences" : {
       "localizations" : {
         "bg" : {
@@ -192409,6 +192763,12 @@
         }
       }
     },
+    "Manual Backup" : {
+
+    },
+    "Manual Backups" : {
+
+    },
     "Manual Basal" : {
       "comment" : "Status highlight when manual temp basal is running.",
       "extractionState" : "manual",
@@ -192549,6 +192909,9 @@
     },
     "Manual basal %@" : {
       "comment" : "Accessibility: manual temp basal rate the user set on the pump"
+    },
+    "Manual Bolus" : {
+
     },
     "manual entry" : {
       "comment" : "Accessibility: manually entered glucose",
@@ -193859,6 +194222,9 @@
           }
         }
       }
+    },
+    "Match Phone" : {
+
     },
     "Max" : {
       "comment" : "Y-axis value for the upper bound of a cone.",
@@ -206924,6 +207290,9 @@
         }
       }
     },
+    "Moon" : {
+
+    },
     "More information" : {
       "localizations" : {
         "bg" : {
@@ -207183,6 +207552,9 @@
           }
         }
       }
+    },
+    "More information about Backup Retention" : {
+
     },
     "More options" : {
       "extractionState" : "manual",
@@ -207842,6 +208214,9 @@
         }
       }
     },
+    "Name Your Backup" : {
+
+    },
     "Native G5 app" : {
       "comment" : "Native G5 app",
       "extractionState" : "manual",
@@ -208500,6 +208875,9 @@
           }
         }
       }
+    },
+    "New Profile" : {
+
     },
     "New Release v%@" : {
       "comment" : "Home panel title offering the release notes; the placeholder is a version number",
@@ -209691,6 +210069,7 @@
       }
     },
     "Nightscout is a cloud-based platform that allows you to store your diabetes data. It's often used by caregivers to remotely monitor what Trio is doing." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -209822,6 +210201,7 @@
     },
     "Nightscout setup and unit and pump model selection are all complete." : {
       "comment" : "Description of the onboarding chapter when the user has completed the Nightscout setup and unit and pump model selection steps.",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -209952,6 +210332,7 @@
       }
     },
     "Nightscout use is entirely optional. You can also setup Nightscout at a later time." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -210341,6 +210722,12 @@
           }
         }
       }
+    },
+    "No Automation: Trio won’t adjust any insulin delivery, even to help prevent low glucose. Your pump will only deliver your set basal rates and manual boluses." : {
+
+    },
+    "No backups found" : {
+
     },
     "No biometric identities are enrolled. Please set up Face ID or Touch ID." : {
       "localizations" : {
@@ -213103,6 +213490,9 @@
         }
       }
     },
+    "No recent backups." : {
+
+    },
     "No recent determination." : {
       "localizations" : {
         "bg" : {
@@ -213769,7 +214159,11 @@
         }
       }
     },
+    "No settings included." : {
+
+    },
     "No settings matching your search query" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -216681,6 +217075,9 @@
         }
       }
     },
+    "Not included" : {
+
+    },
     "not looping" : {
       "comment" : "Accessibility: loop status",
       "localizations" : {
@@ -217339,6 +217736,12 @@
           }
         }
       }
+    },
+    "Not Set" : {
+
+    },
+    "Not Specified" : {
+
     },
     "Note" : {
       "comment" : "Food Type / Meal Note",
@@ -223383,6 +223786,9 @@
         }
       }
     },
+    "Once a day, Trio will check for any new settings changes and automatically back them up." : {
+
+    },
     "Once enabled, the available customizations will appear. You can customize with the calendar of your choosing, use of emoji labels, and the inclusion of IOB & COB data." : {
       "localizations" : {
         "bg" : {
@@ -227464,6 +227870,7 @@
     },
     "Optionally sync with Nightscout and enter essentials." : {
       "comment" : "Description of the Prepare Trio onboarding chapter.",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -228253,6 +228660,7 @@
       }
     },
     "Other third-party services, like Apple Health or Tidepool, can be added later through the settings menu." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -232213,6 +232621,9 @@
         }
       }
     },
+    "Partial Loop" : {
+      "comment" : "Dosing mode"
+    },
     "Past 24 Hours " : {
       "comment" : "Duration displayed in statPanel",
       "extractionState" : "manual",
@@ -234863,6 +235274,9 @@
         }
       }
     },
+    "Permissions" : {
+
+    },
     "Persist sensordata" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -236179,6 +236593,7 @@
       }
     },
     "Please choose if you want to import existing therapy settings from Nightscout or start from scratch." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -236309,6 +236724,7 @@
       }
     },
     "Please choose if you want to upload CGM readings from Trio to Nightscout." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -236439,6 +236855,7 @@
       }
     },
     "Please choose if you want to upload treatment data to Nightscout." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -236569,6 +236986,7 @@
       }
     },
     "Please enter your credentials:" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -238044,6 +238462,7 @@
       }
     },
     "Prepare Trio" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -240799,6 +241218,12 @@
           }
         }
       }
+    },
+    "Profile Photo" : {
+
+    },
+    "Profile, Language & Units, and more" : {
+
     },
     "Profiles" : {
       "extractionState" : "manual",
@@ -246181,6 +246606,9 @@
         }
       }
     },
+    "Radius: %lld m" : {
+
+    },
     "Raise target glucose when Autosens Ratio is less than 1." : {
       "localizations" : {
         "bg" : {
@@ -246310,6 +246738,9 @@
           }
         }
       }
+    },
+    "Raise Target When Sensitive" : {
+
     },
     "Random variation added to each reading to simulate real-world sensor noise." : {
       "localizations" : {
@@ -246570,6 +247001,9 @@
           }
         }
       }
+    },
+    "Range Graph Lines" : {
+
     },
     "Range: %@–%@ %@" : {
       "localizations" : {
@@ -248674,6 +249108,15 @@
         }
       }
     },
+    "Recent / Historical TDD" : {
+
+    },
+    "Recent %lld%%" : {
+
+    },
+    "Recent versions of Trio automatically back up your app and Therapy settings to iCloud. Choose whether to restore your saved settings from an existing iCloud backup or start fresh with new settings." : {
+
+    },
     "Recommendation" : {
       "comment" : "Bolus screen",
       "localizations" : {
@@ -250246,6 +250689,9 @@
         }
       }
     },
+    "Refresh backups" : {
+
+    },
     "Release Notes" : {
       "localizations" : {
         "bg" : {
@@ -251810,6 +252256,15 @@
         }
       }
     },
+    "Rename" : {
+
+    },
+    "Rename Backup" : {
+
+    },
+    "Repeat" : {
+
+    },
     "Replace CGM Sensor" : {
       "comment" : "Title of an alert that instructs the user to replace a CGM sensor.",
       "localizations" : {
@@ -252071,6 +252526,9 @@
           }
         }
       }
+    },
+    "Report a Bug" : {
+
     },
     "Represents carb equivalent for fat and protein, calculated using the Warsaw Method." : {
       "localizations" : {
@@ -253895,6 +254353,21 @@
           }
         }
       }
+    },
+    "Restore Settings" : {
+
+    },
+    "Restore Settings?" : {
+
+    },
+    "Restore your settings from an iCloud backup or start fresh." : {
+
+    },
+    "Restoring settings…" : {
+
+    },
+    "Restoring settings… Keep Trio open." : {
+
     },
     "Resume" : {
       "extractionState" : "manual",
@@ -256678,6 +257151,9 @@
         }
       }
     },
+    "Safety-Only Automation: Trio will reduce or pause basal delivery to help prevent low glucose. Trio won’t increase insulin delivery to correct high glucose.* Your pump will only deliver your set basal rates and manual boluses.\n\n*When appropriate, Trio may make up for insulin withheld during reduced or paused basal delivery. It will never make up for more than the amount withheld." : {
+
+    },
     "Save" : {
       "comment" : "Save preset namebutton title for saving low reservoir reminder",
       "localizations" : {
@@ -257879,6 +258355,12 @@
         }
       }
     },
+    "Save Profile" : {
+
+    },
+    "Save Schedule" : {
+
+    },
     "Saved Food" : {
       "comment" : "Saved Food Presets",
       "localizations" : {
@@ -258668,6 +259150,9 @@
           }
         }
       }
+    },
+    "Schedule" : {
+
     },
     "Schedule " : {
       "extractionState" : "manual",
@@ -259608,7 +260093,11 @@
         }
       }
     },
+    "Search Locations" : {
+
+    },
     "Search Results" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -259737,6 +260226,9 @@
           }
         }
       }
+    },
+    "Search Settings" : {
+
     },
     "Secondary Font Size" : {
       "localizations" : {
@@ -260647,6 +261139,9 @@
           }
         }
       }
+    },
+    "Select Backup" : {
+
     },
     "Select font size, weight, and width to match your style:" : {
       "localizations" : {
@@ -262485,6 +262980,7 @@
       }
     },
     "Sensitivity changes from Temp Targets have a built-in minimum of 15%. Even very high Temp Targets cannot reduce insulin delivery below 15% of normal." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -262616,6 +263112,7 @@
     },
     "Sensitivity Limits" : {
       "comment" : "A label displayed above a section explaining the sensitivity limits of temp targets.",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -267170,6 +267667,12 @@
         }
       }
     },
+    "Settings restored in Open Loop. Your pump must be unpaired before restoring; review therapy settings before reconnecting it." : {
+
+    },
+    "Settings Restored!" : {
+
+    },
     "Setup & Configuraton" : {
       "localizations" : {
         "bg" : {
@@ -267568,6 +268071,7 @@
       }
     },
     "Setup Nightscout for Trio" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -267696,6 +268200,9 @@
           }
         }
       }
+    },
+    "Sex" : {
+
     },
     "Share anonymous crash reports + usage data." : {
       "localizations" : {
@@ -267966,6 +268473,7 @@
       }
     },
     "Share Logs" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -272537,6 +273045,7 @@
       }
     },
     "Simulator Build has no expiry" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -273067,6 +273576,7 @@
       }
     },
     "Skip Nightscout Setup" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -273850,6 +274360,9 @@
           }
         }
       }
+    },
+    "Slow Absorption" : {
+
     },
     "Smaller iPhone Screens" : {
       "comment" : "UI/UX option",
@@ -275834,6 +276347,9 @@
           }
         }
       }
+    },
+    "Smooth CGM Readings" : {
+
     },
     "Smooth CGM readings using exponential smoothing." : {
       "localizations" : {
@@ -278586,6 +279102,12 @@
         }
       }
     },
+    "Sound" : {
+
+    },
+    "Sound Always" : {
+
+    },
     "Sound off" : {
       "localizations" : {
         "bg" : {
@@ -278845,6 +279367,9 @@
           }
         }
       }
+    },
+    "Sound or Vibrate" : {
+
     },
     "Split" : {
       "localizations" : {
@@ -279367,6 +279892,9 @@
           }
         }
       }
+    },
+    "Standard Alerts" : {
+
     },
     "start" : {
       "localizations" : {
@@ -282016,6 +282544,12 @@
           }
         }
       }
+    },
+    "Statistics Bar" : {
+
+    },
+    "Statistics Format" : {
+
     },
     "Stay in open loop (no automated dosing) for a bit to help Trio catch up to keep you safe" : {
       "localizations" : {
@@ -284767,6 +285301,7 @@
       }
     },
     "Submit Ticket on GitHub" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -285156,6 +285691,9 @@
         }
       }
     },
+    "Success!" : {
+
+    },
     "Successful Loops" : {
       "localizations" : {
         "bg" : {
@@ -285285,6 +285823,9 @@
           }
         }
       }
+    },
+    "Sudden Rise → Pause AB" : {
+
     },
     "Suggested at" : {
       "comment" : "Headline in suggested pop up (at: at what time)",
@@ -285553,6 +286094,9 @@
           }
         }
       }
+    },
+    "Sun" : {
+
     },
     "Super Bolus" : {
       "localizations" : {
@@ -286335,6 +286879,7 @@
       }
     },
     "Support & Community" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -288043,6 +288588,9 @@
         }
       }
     },
+    "Symbol" : {
+
+    },
     "Synth" : {
       "comment" : "Display name for the synth alarm sound.",
       "localizations" : {
@@ -288173,6 +288721,12 @@
           }
         }
       }
+    },
+    "System" : {
+
+    },
+    "System Alerts" : {
+
     },
     "System Default" : {
       "localizations" : {
@@ -290261,6 +290815,9 @@
           }
         }
       }
+    },
+    "Target Adjustment" : {
+
     },
     "Target Behavior" : {
       "localizations" : {
@@ -292535,6 +293092,9 @@
         }
       }
     },
+    "Temporary Basal Rate" : {
+
+    },
     "Temporary Basal Rate (TBR)" : {
       "localizations" : {
         "bg" : {
@@ -293314,6 +293874,12 @@
           }
         }
       }
+    },
+    "Temporary Targets" : {
+
+    },
+    "Temporary Targets do not independently change insulin sensitivity or Auto Bolus eligibility. Use an Override to change those behaviors." : {
+
     },
     "The Adjustment Factor (AF) allows you to control how quickly and effectively Dynamic ISF responds to changes in glucose levels." : {
       "localizations" : {
@@ -295036,6 +295602,9 @@
           }
         }
       }
+    },
+    "The Default profile applies when no scheduled profile is active and cannot be deleted." : {
+
     },
     "The default setting is based on this calculation:" : {
       "localizations" : {
@@ -298945,6 +299514,9 @@
         }
       }
     },
+    "The selected photo could not be loaded." : {
+
+    },
     "The Sensitivity Ratio is used to calculate the amount of adjustment needed to basal rates and ISF." : {
       "localizations" : {
         "bg" : {
@@ -301295,6 +301867,7 @@
       }
     },
     "This 15% minimum is a safety limit taken from oref (OpenAPS reference design) and AndroidAPS. It helps prevent insulin delivery from dropping to unsafe levels." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -301553,6 +302126,12 @@
           }
         }
       }
+    },
+    "This alert will play a sound, even when your phone is set to Silent." : {
+
+    },
+    "This alert will vibrate without sound, even when your phone is set to Ring." : {
+
     },
     "This allows Trio to read from and write to Apple Health." : {
       "localizations" : {
@@ -301820,6 +302399,9 @@
           }
         }
       }
+    },
+    "This backup couldn’t be opened." : {
+
     },
     "This cap prevents the system from overestimating how much insulin is needed when carb absorption isn't visible, offering a safeguard for accurate dosing." : {
       "localizations" : {
@@ -302342,6 +302924,7 @@
       }
     },
     "This difference exists because situations like exercise often need a much larger insulin reduction than Autosens would detect during a normal daily routine." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -307906,6 +308489,12 @@
         }
       }
     },
+    "This removes the backup from iCloud." : {
+
+    },
+    "This restores settings in Open Loop. Disconnect and unpair your pump before restoring; review therapy settings before pairing again." : {
+
+    },
     "This setting adjusts how much weight is given to your recent total daily insulin dose when calculating Dynamic ISF and Dynamic CR." : {
       "localizations" : {
         "bg" : {
@@ -309341,6 +309930,9 @@
           }
         }
       }
+    },
+    "This version has known issues. Update Trio." : {
+
     },
     "This version of Trio was built from '%@', not the released main branch.\n\nAny updates on this branch may contain new, lightly tested features, and may be unsafe. If you are not a tester, please do not use this branch, and switch to main." : {
       "comment" : "Body of the warning shown on builds from a branch other than main or dev; the placeholder is the branch name",
@@ -311708,6 +312300,9 @@
         }
       }
     },
+    "Time Sensitive" : {
+
+    },
     "time unknown" : {
       "comment" : "Accessibility: elapsed time unavailable",
       "localizations" : {
@@ -313008,6 +313603,9 @@
           }
         }
       }
+    },
+    "TIR Lower Threshold" : {
+
     },
     "To" : {
       "localizations" : {
@@ -318668,6 +319266,9 @@
         }
       }
     },
+    "Trio %@ is available." : {
+
+    },
     "Trio adjusts your insulin automatically." : {
       "localizations" : {
         "bg" : {
@@ -318798,7 +319399,11 @@
         }
       }
     },
+    "Trio analyzes your glucose every 5 minutes to determine how insulin delivery should adjust in each moment. Choose which adjustments Trio can make automatically. All Loop Modes require an active CGM and insulin pump." : {
+
+    },
     "Trio Backup" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -319579,6 +320184,7 @@
       }
     },
     "Trio Configuration" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -320230,6 +320836,7 @@
       }
     },
     "Trio Docs" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -321138,6 +321745,9 @@
           }
         }
       }
+    },
+    "Trio Help Guide" : {
+
     },
     "Trio Icon" : {
       "localizations" : {
@@ -324656,6 +325266,7 @@
       }
     },
     "Trio v%@ (%@)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -325052,6 +325663,7 @@
       }
     },
     "Trio will import the following therapy settings from your Nightscout instance:" : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -326092,6 +326704,7 @@
       }
     },
     "Try again in a moment, or configure your Therapy Settings manually instead." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -327654,6 +328267,9 @@
           }
         }
       }
+    },
+    "UAM Predictions" : {
+
     },
     "UAM SMB Minutes" : {
       "extractionState" : "manual",
@@ -329383,6 +329999,9 @@
         }
       }
     },
+    "Units" : {
+
+    },
     "Units & Pump" : {
       "localizations" : {
         "bg" : {
@@ -330171,6 +330790,9 @@
         }
       }
     },
+    "Unlock Personal Information" : {
+
+    },
     "Unsuspend If No Temp" : {
       "comment" : "Unsuspend If No Temp",
       "localizations" : {
@@ -330434,6 +331056,7 @@
     },
     "up to date" : {
       "comment" : "Accessibility: version status",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -330565,6 +331188,7 @@
     },
     "update available" : {
       "comment" : "Accessibility: version status",
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -332674,6 +333298,9 @@
         }
       }
     },
+    "Upper Limit" : {
+
+    },
     "Upper limit of the Autosens Ratio." : {
       "localizations" : {
         "bg" : {
@@ -332933,6 +333560,9 @@
           }
         }
       }
+    },
+    "Urgent Alerts" : {
+
     },
     "Urgent Low" : {
       "comment" : "Display name for the urgent low alarm sound.",
@@ -333194,6 +333824,9 @@
           }
         }
       }
+    },
+    "Urgent Low Soon" : {
+
     },
     "Urgent Low Threshold" : {
       "localizations" : {
@@ -334649,6 +335282,9 @@
         }
       }
     },
+    "Use Initials" : {
+
+    },
     "Use local glucose server" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -335053,6 +335689,9 @@
           }
         }
       }
+    },
+    "Use your device passcode or biometrics to view personal information." : {
+
     },
     "Use your Tidepool credentials to log in. If you don't have a Tidepool account, you can sign up on the login page.\n\nWhen connected, Trio uploads your glucose, carb entries, insulin (bolus and basal), pump settings, and therapy settings to Tidepool.\n\nTherapy settings include basal schedules, carb ratios, insulin sensitivities, and glucose targets." : {
       "localizations" : {
@@ -336775,6 +337414,12 @@
         }
       }
     },
+    "Version" : {
+
+    },
+    "Vertical" : {
+
+    },
     "Very High (>%@)" : {
       "localizations" : {
         "bg" : {
@@ -337427,6 +338072,9 @@
         }
       }
     },
+    "Vibrate Always" : {
+
+    },
     "View" : {
       "localizations" : {
         "bg" : {
@@ -337556,6 +338204,9 @@
           }
         }
       }
+    },
+    "View Backups" : {
+
     },
     "View Statistics" : {
       "comment" : "Stats banner hidden face",
@@ -337687,6 +338338,9 @@
           }
         }
       }
+    },
+    "View your Trio personal information." : {
+
     },
     "W" : {
       "comment" : "Abbreviation for week",
@@ -338867,6 +339521,7 @@
       }
     },
     "Warning: Known issues. Update now." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -340707,6 +341362,18 @@
           }
         }
       }
+    },
+    "Weekdays" : {
+
+    },
+    "Weekends" : {
+
+    },
+    "Weekly" : {
+
+    },
+    "Weight (kg)" : {
+
     },
     "Weight of 24-hr TDD against 10-day TDD." : {
       "localizations" : {
@@ -343709,6 +344376,12 @@
         }
       }
     },
+    "When Glucose is Above" : {
+
+    },
+    "When no scheduled profile is active" : {
+
+    },
     "When Remote Control is enabled, you can send boluses, overrides, temporary targets, carbs, and other commands to Trio via push notifications." : {
       "localizations" : {
         "bg" : {
@@ -344489,6 +345162,9 @@
         }
       }
     },
+    "When There Are COB" : {
+
+    },
     "When this feature is enabled, manually setting a temporary target above %@ %@ will decrease the Autosens Ratio used for ISF and basal adjustments, resulting in less insulin delivered overall. This scales with the temporary target set; the higher the temp target, the lower the Autosens Ratio used." : {
       "localizations" : {
         "bg" : {
@@ -345162,7 +345838,7 @@
     "When your CGM reports a state where it cannot give a usable reading, such as a sensor error or warmup, Trio uploads that state to Nightscout as a note." : {
 
     },
-    "When your CGM reports a state where it cannot give a usable reading, such as a sensor error or warmup, Trio uploads that state to Nightscout as a note. Supported for Dexcom G6 and G7." : {
+    "When your phone is set to Ring, this alert will play a sound. When your phone is set to Silent, this alert will vibrate." : {
 
     },
     "which is below your Threshold (" : {
@@ -345562,6 +346238,9 @@
           }
         }
       }
+    },
+    "While at this Location" : {
+
     },
     "While onboarding, Trio continues to operate with your prior settings." : {
       "localizations" : {
@@ -346755,6 +347434,9 @@
           }
         }
       }
+    },
+    "Work" : {
+
     },
     "𝒳 = Max SMB Basal Minutes" : {
       "localizations" : {
@@ -348064,7 +348746,11 @@
         }
       }
     },
+    "You can restore settings from an iCloud backup later, even if you choose to start fresh now." : {
+
+    },
     "You can use Nightscout to import your existing therapy settings, or if you prefer, you can only connect to Nightscout, and configure therapy settings from scratch." : {
+      "extractionState" : "stale",
       "localizations" : {
         "bg" : {
           "stringUnit" : {
@@ -348713,6 +349399,9 @@
           }
         }
       }
+    },
+    "Your \"%@\" backup has been saved to iCloud." : {
+
     },
     "Your algorithm settings (previously called \"OpenAPS settings\") are reset to defaults." : {
       "localizations" : {
@@ -349501,6 +350190,9 @@
           }
         }
       }
+    },
+    "Your glucose is falling quickly." : {
+
     },
     "Your glucose may go below %2$@ in %1$d min." : {
       "localizations" : {
@@ -350420,6 +351112,9 @@
         }
       }
     },
+    "Your Profile" : {
+
+    },
     "Your profile basal insulin will be adjusted with the override percentage and your profile ISF and CR will be inversly adjusted with the percentage." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -350817,6 +351512,9 @@
           }
         }
       }
+    },
+    "Your settings and eligible Dynamic ISF history have been restored. Trio remains in Open Loop. Please review your therapy settings before pairing a pump." : {
+
     },
     "Your therapy settings (basal rates, carb ratios, insulin sensitivities and glucose targets) are carried over." : {
       "localizations" : {
